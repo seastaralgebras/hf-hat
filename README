@@ -1,0 +1,24 @@
+This is the README file for the hf-hat program.
+
+Copyright (C) 2015 Sucharit Sarkar.
+Contact: sucharit@math.princeton.edu
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.
+
+
+**********************************
+First of all, you need to install Sage. (Visit http://www.sagemath.org/)
+
+The main program is hf-hat.sage. Two Heegaard diagrams for
+Sigma(2,3,7), and a single Heegaard diagram for Sigma(2,3,4) are
+stored in the files Sigma_2_3_7.sage, Sigma_2_3_7_other.sage, and
+Sigma_2_3_4.sage. See the files for instructions on how to input a
+Heegaard diagram.
+
+Copy any of those files to a new file foo.sage. Modify foo.sage to
+input your Heegard diagram.
+
+Start sage on the terminal. Then load foo.sage.
+
