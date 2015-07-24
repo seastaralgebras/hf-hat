@@ -17,308 +17,497 @@
 ## along with hf-hat; see COPYING.  If not, see
 ## <http://www.gnu.org/licenses/>.
 
-#######BASIC CALCULATIONS#######
-genus=len(intersections)
-#for now, same as the number of alpha-circles.
-all_intersections=[(i,j) for i in range(genus) for j in intersections[i]]
-#The j-th intersection point lies in alpha_a and beta_b where (a,b)=all_intersections[j].
-regions=len(boundaries)
-#number of regions
-for i in range(regions):
-    n=len(boundaries[i])
-    if n%2==1:
-        raise Exception('Odd number of points on boundary.')
-    for j in range(n/2):
-        [a,b]=boundaries[i][2*j:2*j+2]#these should be consecutive points on some alpha-circle.
-        c=boundaries[i][2*j-1]#should be on the same beta-circle as a.
-        al=all_intersections[a][0]
-        if al!=all_intersections[b][0]:
-            raise Exception('Not on the same alpha-circle.')
-        if all_intersections[a][1]!=all_intersections[c][1]:
-            raise Exception('Not on the same beta-circle')
-        if abs(a-b) not in [1,len(intersections[al])-1]:
-            raise Exception('Not consecutive points.')
-euler_measures_2=vector(ZZ,regions,[2-len(ll)/2 for ll in boundaries])
-#Euler measures of the regions, times 2.            
-boundary_mat=matrix(ZZ,regions,len(all_intersections),[[-boundaries[i][0::2].count(j)+boundaries[i][1::2].count(j) for j in range(len(all_intersections))] for i in range(regions)])
-#boundary_mat[i][j] is the coefficient of the boundary of (boundary of the i-th region restricted to alpha circles) at the j-th intersection point.
-point_measures_4=matrix(ZZ,regions,len(all_intersections),[[boundaries[i].count(j) for j in range(len(all_intersections))] for i in range(regions)])
-#point_measures[i][j] is the point measure of i-th region at the j-th point, times 4.
 
-generators=[]
-#hf-generators will be represented as a tuple of g intersection points; the i-th point will be on alpha_i (i.e., the tuple is sorted).
-permutations=Arrangements(range(genus),genus).list()
-for permu in permutations:
-    possibilities=[[j for j in range(len(all_intersections)) if all_intersections[j]==(i,permu[i])] for i in range(genus)]
-    generators+=list(cartesian_product_iterator(possibilities))
+class HeegaardDiagram():
+
+    def __init__(self,boundary_intersections,num_pointed_regions,image_of_intersections=None):
+        """
+        Number all the regions (complement of alpha,beta), starting at
+        0, so that all the unpointed regions come first. Number all
+        the intersection points between alpha,beta, again starting at
+        0 (the numbering is arbitrary). 
         
-def find_domain(initial,final):
-    #finds a domain D from the initial generator to the final generator; returns (Maslov_index(D),D)
-    target_vect=vector(ZZ,len(all_intersections))
-    target_vect_abs=vector(ZZ,len(all_intersections))
-    for j in range(len(all_intersections)):
-        target_vect[j]=final.count(j)-initial.count(j)
-        target_vect_abs[j]=final.count(j)+initial.count(j)
-    
-    answer=boundary_mat.solve_left(target_vect)#returns ValueError on failure
-    answer=vector(ZZ,regions,answer)#forcing answer to be over integers, returns TypeError on failure
-    maslov=2*answer.dot_product(euler_measures_2)+answer*point_measures_4*target_vect_abs
-    if maslov%4!=0:
-        raise Exception('Maslov index not an integer!')
-    maslov=maslov/4
+        The boundary_intersections is a list whose i-th element is a list of
+        intersection points that appear on the boundary of the i-th
+        region, according to the boundary orientation, so that the
+        part of the boundary joining the first two points lie on an
+        alpha circle. (We are implicitly assuming that all regions are
+        planar with one boundary (which can intersect itself).)
 
-    return (maslov,answer)
+        The num_pointed_regions is the number of pointed regions
+        (always the last few). 
 
-SpinC=[0,]+(len(generators)-1)*[None,]
-#SpinC[i] will be the SpinC structure of the i-th generator (SpinC structures numbered arbitrarily starting at 0, currently set to be the SpinC structure of the 0-th generator).
+        Sometimes, there is a Z/2-action. The program can work with a
+        single such Z/2-action. If there is a Z/2-action, input
+        image_of_intersections as list whose i-th element is the
+        Z/2-action image of the i-th intersection point. (The default
+        is None.)
+        """
 
-domains_stored=dict()
-#domains_stored[(i,j)] stores (m,D) where D is a domain from the i-th generator to the j-th generator, and m is its Maslov index. If there are multiple domains (happens when H^1 not 0), will store only one (the program isn't really fit for that case). If there are none (happens when H_1 not 0, i.e., have multiple SpinC structures), stores None.
-for initial_ind,initial in enumerate(generators):
-    for final_ind,final in enumerate(generators):
-        S=SpinC[final_ind]
-        if final_ind<initial_ind:
-            if domains_stored[(final_ind,initial_ind)]==None:
-                domains_stored[(initial_ind,final_ind)]=None
-            else:
-                (m,D)=domains_stored[(final_ind,initial_ind)]
-                domains_stored[(initial_ind,final_ind)]=(-m,-D)
-        elif final_ind==initial_ind:
-            domains_stored[(initial_ind,final_ind)]=(0,vector(ZZ,regions))
+        #Basic initialization. (Will convert boundary_intersections to its lexicographically smallest form.)
+        self.boundary_intersections=[]
+        for intersections_list in boundary_intersections:
+            smallest_indices=[2*ind_i for ind_i,i in enumerate(intersections_list[0::2]) if i==min(intersections_list[0::2])]
+            next_intersections=[intersections_list[ind_i+1] for ind_i in smallest_indices]
+            smallest_index=next(ind_i for ind_i in smallest_indices if intersections_list[ind_i+1]==min(next_intersections))
+            self.boundary_intersections.append(intersections_list[smallest_index:]+intersections_list[:smallest_index])
+        if image_of_intersections!=None:
+            self.there_is_action=True
+            self.image_of_intersections=image_of_intersections
         else:
-            if S==None:
-                try:
-                    domains_stored[(initial_ind,final_ind)]=find_domain(initial,final)
-                    SpinC[final_ind]=SpinC[initial_ind]
-                except (ValueError, TypeError):#Will return an error if cannot find a domain
-                    domains_stored[(initial_ind,final_ind)]=None
-                    if final_ind==initial_ind+1:
-                        SpinC[final_ind]=max(SpinC)+1
-            elif S==SpinC[initial_ind]:
-                first=next(g for g in range(len(generators)) if SpinC[g]==S)
-                (m1,D1)=domains_stored[(first,initial_ind)]
-                (m2,D2)=domains_stored[(first,final_ind)]
-                domains_stored[(initial_ind,final_ind)]=(m2-m1,D2-D1)
-            else:
-                domains_stored[(initial_ind,final_ind)]=None
+            self.there_is_action=False
 
-genSpinC=[[g for g in range(len(generators)) if SpinC[g]==S] for S in range(max(SpinC)+1)]
-#genSpinC[i] is a list of generators indices living in the i-th SpinC structure.
+        self.regions=range(len(self.boundary_intersections))#the regions
+        self.regions_un=range(len(self.boundary_intersections)-num_pointed_regions)#the unpointed regions
+        self.intersections=range(1+max(flatten(self.boundary_intersections)))#the intersection points
 
-def can_contribute(i,j):
-    #checks if the domain from i-th generator to j-th generator has Maslov index 1 and is positive.
-    try:
-        (m,D)=domains_stored[(i,j)]
-        if m==1 and [a for a in D if a<0]==[]:
-            return True
+
+        #Euler measures of the regions, times 2 (unpointed data stored as a matrix).            
+        self.euler_measures_2=[2-len(self.boundary_intersections[R])/2 for R in self.regions]
+        self.euler_measures_2_un=vector(ZZ,len(self.regions_un),self.euler_measures_2[:len(self.regions_un)])
+        if min(self.euler_measures_2_un)>-1:
+            self.is_nice=True#is a nice diagram
         else:
+            self.is_nice=False
+        #boundary_mat[i][j] is the coefficient of the boundary of (boundary of the i-th region restricted to alpha circles) at the j-th intersection point  (unpointed data stored as a matrix).  
+        self.boundary_mat=[[-self.boundary_intersections[R][0::2].count(p)+self.boundary_intersections[R][1::2].count(p) for p in self.intersections] for R in self.regions]
+        self.boundary_mat_un=matrix(ZZ,len(self.regions_un),len(self.intersections),self.boundary_mat[:len(self.regions_un)])
+        #point_measures_4[i][j] is the point measure of i-th region at the j-th point, times 4  (unpointed data stored as a matrix).  
+        self.point_measures_4=[[self.boundary_intersections[R].count(p) for p in self.intersections] for R in self.regions]
+        self.point_measures_4_un=matrix(ZZ,len(self.regions_un),len(self.intersections),self.point_measures_4[:len(self.regions_un)])
+
+
+        #intersections_on_alphas[i] is the ordered list of intersections on alpha_i (according to the orientation of alpha_i). Similarly, for beta. 
+        self.intersections_on_alphas=[]
+        while len(flatten(self.intersections_on_alphas))<len(self.intersections):
+            start_p=next(p for p in self.intersections if p not in flatten(self.intersections_on_alphas))
+            new_circle=[]
+            curr_p=start_p
+            while curr_p!=start_p or new_circle==[]:
+                new_circle.append(curr_p)
+                found_next_point=False
+                regions_with_curr_point=[(R,ind_p) for R in self.regions for ind_p in range(len(self.boundary_intersections[R])) if curr_p == self.boundary_intersections[R][ind_p]]
+                for (R,ind_p) in regions_with_curr_point:
+                    if not found_next_point:
+                        if ind_p%2==0 and self.boundary_intersections[R][ind_p+1] not in new_circle:
+                            found_next_point=True
+                            curr_p=self.boundary_intersections[R][ind_p+1]
+                        elif ind_p%2==1 and self.boundary_intersections[R][ind_p-1] not in new_circle:
+                            found_next_point=True
+                            curr_p=self.boundary_intersections[R][ind_p-1]
+                if not found_next_point:#must have completed the cycle
+                    curr_p=start_p
+            self.intersections_on_alphas.append(new_circle)
+        self.intersections_on_betas=[]
+        while len(flatten(self.intersections_on_betas))<len(self.intersections):
+            start_p=next(p for p in self.intersections if p not in flatten(self.intersections_on_betas))
+            new_circle=[]
+            curr_p=start_p
+            while curr_p!=start_p or new_circle==[]:
+                new_circle.append(curr_p)
+                found_next_point=False
+                regions_with_curr_point=[(R,ind_p) for R in self.regions for ind_p in range(len(self.boundary_intersections[R])) if curr_p == self.boundary_intersections[R][ind_p]]
+                for (R,ind_p) in regions_with_curr_point:
+                    if not found_next_point:
+                        if ind_p%2==0 and self.boundary_intersections[R][ind_p-1] not in new_circle:
+                            found_next_point=True
+                            curr_p=self.boundary_intersections[R][ind_p-1]
+                        elif ind_p%2==1 and self.boundary_intersections[R][ind_p+1-len(self.boundary_intersections[R])] not in new_circle:
+                            found_next_point=True
+                            curr_p=self.boundary_intersections[R][ind_p+1-len(self.boundary_intersections[R])]
+                if not found_next_point:#must have completed the cycle
+                    curr_p=start_p
+            self.intersections_on_betas.append(new_circle)
+
+        self.alphas=range(len(self.intersections_on_alphas))#the alpha circles
+        self.betas=range(len(self.intersections_on_betas))#the beta circles
+        self.intersection_incidence=[(next(a for a in self.alphas if p in self.intersections_on_alphas[a]),next(b for b in self.betas if p in self.intersections_on_betas[b])) for p in self.intersections]#the i-th intersection point lies in alpha_a and beta_b where (a,b)=intersection_incidence[i]
+
+        #region_graph_alpha is a graph whose vertices are regions, and edges are alpha arcs separating two regions. Edges labeled by which alpha circle, and the alpha arc (as the index of first (according to the orientation of that alpha circle) intersection point on that alpha arc). Ditto for beta circles
+        self.region_graph_alpha=Graph(len(self.regions),multiedges=True,loops=True)
+        for a in self.alphas:
+            for ind_p,p in enumerate(self.intersections_on_alphas[a]):
+                q=self.intersections_on_alphas[a][ind_p+1-len(self.intersections_on_alphas[a])]
+                regions_with_pq=[R for R in self.regions for ind_foo,foo in enumerate(self.boundary_intersections[R][0::2]) if sorted([foo,self.boundary_intersections[R][2*ind_foo+1]])==sorted([p,q])]
+                if len(regions_with_pq)!=2:
+                    raise Exception("Each alpha arc has two adjacent regions")
+                self.region_graph_alpha.add_edge(regions_with_pq+[(a,ind_p),])
+        self.region_graph_beta=Graph(len(self.regions),multiedges=True,loops=True)
+        for b in self.betas:
+            for ind_p,p in enumerate(self.intersections_on_betas[b]):
+                q=self.intersections_on_betas[b][ind_p+1-len(self.intersections_on_betas[b])]
+                regions_with_pq=[R for R in self.regions for ind_foo,foo in enumerate(self.boundary_intersections[R][0::2]) if sorted([foo,self.boundary_intersections[R][2*ind_foo-1]])==sorted([p,q])]
+                if len(regions_with_pq)!=2:
+                    raise Exception("Each beta arc has two adjacent regions")
+                self.region_graph_beta.add_edge(regions_with_pq+[(b,ind_p),])
+
+        #Now some more error checking. (Definitely not a complete collection.) If diagram is wrong, some error could also be raised by other parts of the program.
+        if vector(ZZ,len(self.regions),(len(self.regions))*[1,])*matrix(ZZ,len(self.regions),len(self.intersections),self.point_measures_4)!=vector(ZZ,len(self.intersections),(len(self.intersections))*[4,]):
+            raise Exception("Every intersection should have four corners.")
+        if len(self.alphas)!=len(self.betas):
+            raise Exception("Require same number of alpha and beta circles.")
+        if self.there_is_action:
+            for p in self.intersections:
+                if self.image_of_intersections[self.image_of_intersections[p]]!=p:
+                    raise Exception("Not an involution.")
+            for R in self.regions:
+                image_of_R=[self.image_of_intersections[p] for p in self.boundary_intersections[R]]
+                smallest_indices=[2*ind_i for ind_i,i in enumerate(image_of_R[0::2]) if i==min(image_of_R[0::2])]
+                next_intersections=[image_of_R[ind_i+1] for ind_i in smallest_indices]
+                smallest_index=next(ind_i for ind_i in smallest_indices if image_of_R[ind_i+1]==min(next_intersections))
+                image_of_R=image_of_R[smallest_index:]+image_of_R[:smallest_index]
+                if image_of_R not in self.boundary_intersections:
+                    raise Exception("The Z/2-action is not a valid action.")
+
+        #generators is the list of hf-generators, and generator_reps are their representatives. Each generator is represented as a tuple of intersections; the i-th point will be on alpha_i.
+        self.generator_reps=[]
+        permutations=Arrangements(self.alphas,len(self.alphas)).list()
+        for permu in permutations:
+            possibilities=[[p for p in self.intersections_on_alphas[a] if self.intersection_incidence[p][1]==permu[a]] for a in self.alphas]
+            self.generator_reps+=list(cartesian_product_iterator(possibilities))
+        self.generators=range(len(self.generator_reps))#the generator names
+
+        if self.there_is_action:
+            self.image_of_generators=[]#images of the generators under the Z/2-action
+            for g in self.generators:
+                image=[self.image_of_intersections[self.generator_reps[g][a]] for a in self.alphas]
+                image=tuple([next(p for p in image if self.intersection_incidence[p][0]==a) for a in self.alphas])
+                self.image_of_generators.append(self.generator_reps.index(image))
+
+
+        #Some more variables that will not be initialized initially, since we need to solve matrix equations.
+        self.SpinC=[0,]+(len(self.generators)-1)*[None,]#SpinC[i] will be the SpinC structure of the i-th generator (numbered arbitrarily starting at 0).
+        self.SpinC_structures=[]#the SpinC structures
+        self.genSpinC=[]#genSpinC[i] is a list of generators indices living in the i-th SpinC structure.
+        #domains_stored[i][j] stores (m,D) where D is a domain (as a vector over the unpointed regions) from the i-th generator to the j-th generator, and m is its Maslov index. If there are multiple domains (happens when H^1 not 0), will store only one (the program isn't really fit for that case). If there are none (happens when H_1 not 0, i.e., have multiple SpinC structures), stores None.
+        if self.there_is_action:
+            self.image_of_SpinC_structures=[]#if_there_is_action, image of SpinC_structures under the action.
+        self.domains_stored=len(self.generators)*[None,]#domains_stored will be a double list, domains_stored[i][j] will store (m,D) or None; where D is some domain from i to j and m is its Maslov index.
+        self.abs_gr=len(self.generators)*[None,]#The absolute gradings of the generators; can be reset manually.
+        self.gr_min=None
+        self.gr_max=None#the minimum and maximum abs grading
+        self.grading_spread=dict()#dict[gr] is a list of generators with abs_gr=gr
+        self.fully_initialized=False#will be set to true once the above variables are computed.
+
+    def __repr__(self):
+        
+        return "Heegaard diagram with "+repr(len(self.alphas))+" alpha and beta circles intersecting each other in "+repr(len(self.intersections))+" intersection points. The intersection points on the alpha circles are "+repr(self.intersections_on_alphas)+" and the intersection points on the beta circles are "+repr(self.intersections_on_betas)+". There are "+repr(len(self.regions_un))+" unpointed regions, and the intersection points appearing on their boundaries are "+repr(self.boundary_intersections)+"."
+
+    def find_domain(self,initial,final):
+        #finds a domain D from the initial generator to the final generator; returns (Maslov_index(D),D). Called by generate_domain.
+        target_vect=vector(ZZ,len(self.intersections))
+        target_vect_abs=vector(ZZ,len(self.intersections))
+        for p in self.intersections:
+            target_vect[p]=(self.generator_reps[final]).count(p)-(self.generator_reps[initial]).count(p)
+            target_vect_abs[p]=(self.generator_reps[final]).count(p)+(self.generator_reps[initial]).count(p)
+
+        answer=self.boundary_mat_un.solve_left(target_vect)#returns ValueError on failure
+        answer=vector(ZZ,len(self.regions_un),answer)#forcing answer to be over integers, returns TypeError on failure
+        maslov=2*answer.dot_product(self.euler_measures_2_un)+answer*self.point_measures_4_un*target_vect_abs
+        if maslov%4!=0:
+            raise Exception('Maslov index not an integer!')
+        maslov=maslov/4
+
+        return (maslov,answer)
+
+    def generate_domains(self):
+        #Fills up domains_stored, and consequently, all the SpinC information.
+
+        for initial in self.generators:
+            self.domains_stored[initial]=[]
+            for final in self.generators:
+                S=self.SpinC[final]
+                if final<initial:
+                    if self.domains_stored[final][initial]!=None:
+                        (m,D)=self.domains_stored[final][initial]
+                        (self.domains_stored[initial]).append((-m,-D))
+                    else:
+                        (self.domains_stored[initial]).append(None)
+                elif final==initial:
+                    (self.domains_stored[initial]).append((0,vector(ZZ,len(self.regions_un))))
+                else:
+                    if S==None:
+                        try:
+                            (m,D)=self.find_domain(initial,final)
+                            (self.domains_stored[initial]).append((m,D))
+                            self.SpinC[final]=self.SpinC[initial]
+                        except (ValueError, TypeError):#Will return an error if cannot find a domain
+                            if final==initial+1:
+                                self.SpinC[final]=max(self.SpinC)+1
+                            (self.domains_stored[initial]).append(None)
+                    elif S==self.SpinC[initial]:
+                        first=next(g for g in self.generators if self.SpinC[g]==S)
+                        (m1,D1)=self.domains_stored[first][initial]
+                        (m2,D2)=self.domains_stored[first][final]
+                        (self.domains_stored[initial]).append((m2-m1,D2-D1))
+                    else:
+                        (self.domains_stored[initial]).append(None)
+
+        self.SpinC_structures=range(max(self.SpinC)+1)
+        self.genSpinC=[[g for g in self.generators if self.SpinC[g]==S] for S in self.SpinC_structures]
+        if self.there_is_action:
+            self.image_of_SpinC_structures=[self.SpinC[self.image_of_generators[self.genSpinC[S][0]]] for S in self.SpinC_structures]
+
+        for S in self.SpinC_structures:
+            base_gen=self.genSpinC[S][0]
+            if self.there_is_action:
+                if self.image_of_SpinC_structures[S]<S:
+                    self.abs_gr[base_gen]=self.abs_gr[self.image_of_generators[base_gen]]
+                elif self.image_of_SpinC_structures[S]==S:#Error check.
+                    if self.domains_stored[self.image_of_generators[base_gen]][base_gen][0]!=0:
+                        raise Exception("The action does not respect gradings.")
+            else:
+                self.abs_gr[base_gen]=0
+            for g in self.genSpinC[S]:
+                self.abs_gr[g]=self.abs_gr[base_gen]+self.domains_stored[g][base_gen][0]
+        self.gr_min=min(self.abs_gr)
+        self.gr_max=max(self.abs_gr)
+        for gr in Set(self.abs_gr):
+            self.grading_spread[gr]=[g for g in self.generators if self.abs_gr[g]==gr]
+
+        self.fully_initialized=True
+
+    def set_abs_gr(self,base_gen,gr):
+        #Sets abs_gr of generator base_gen to value gr.
+        if not self.fully_initialized:
+            self.generate_domains()
+
+        S=self.SpinC[base_gen]
+        self.abs_gr[base_gen]=gr
+        for g in self.genSpinC[S]:
+            self.abs_gr[g]=self.abs_gr[base_gen]+self.domains_stored[g][base_gen][0]
+        if self.there_is_action and self.image_of_SpinC_structures[S]!=S:
+            base_gen=self.image_of_generators[base_gen]
+            S=self.SpinC[base_gen]
+            self.abs_gr[base_gen]=gr
+            for g in self.genSpinC[S]:
+                self.abs_gr[g]=self.abs_gr[base_gen]+self.domains_stored[g][base_gen][0]
+
+        self.gr_min=min(self.abs_gr)
+        self.gr_max=max(self.abs_gr)
+        self.grading_spread=dict()
+        for gr in Set(self.abs_gr):
+            self.grading_spread[gr]=[g for g in self.generators if self.abs_gr[g]==gr]
+        
+
+    def can_contribute(self,i,j):
+        #checks if the domain from i-th generator to j-th generator has Maslov index 1 and is positive.
+        if not self.fully_initialized:
+            self.generate_domains()
+        try:
+            (m,D)=self.domains_stored[i][j]
+            if m==1 and [a for a in D if a<0]==[]:
+                return True
+            else:
+                return False
+        except TypeError:#when no domains between initial and final.
             return False
-    except TypeError:#when no domains between initial and final.
+
+    def domain_type(self,i,j):
+        #Analyses the domain from i-th generator to j-th generator (only if can_contribute(i,j)). Returns (Euler characteristic, number of boundary components)
+        if not self.can_contribute(i,j):
+            raise Exception("No positive Maslov index 1 domain")
+        if self.is_nice:
+            return (1,1)
+
+        (m,D)=self.domains_stored[i][j]
+        e2=D.dot_product(self.euler_measures_2_un)#twice the Euler measure of D
+        iota=m-e2#the intersection number with fat diagonal
+
+        alpha_coefficients=[sum([(D*self.point_measures_4_un)[p] for p in self.intersections_on_alphas[a]]) for a in self.alphas]
+        num_trivial=alpha_coefficients.count(0)#number of trivial disks
+        euler=len(self.alphas)-num_trivial-iota#Euler char of Lipshitz surface
+
+        bdy_comps=len(self.alphas)*[None,]
+        while None in bdy_comps:
+            first_alpha=bdy_comps.index(None)
+            try:
+                bdy_comps[first_alpha]=max(bdy_comps)+1
+            except TypeError:
+                bdy_comps[first_alpha]=0
+
+            current_alpha=first_alpha
+
+            reached_end_of_loop=False
+            while not reached_end_of_loop:
+                next_alpha=next(a for a in self.alphas if self.intersection_incidence[self.generator_reps[j][current_alpha]][1]==self.intersection_incidence[self.generator_reps[i][a]][1])
+                bdy_comps[next_alpha]=bdy_comps[current_alpha]
+                current_alpha=next_alpha
+                if current_alpha==first_alpha:
+                    reached_end_of_loop=True
+
+        return (euler,max(bdy_comps)+1-num_trivial)
+
+    def does_contribute(self,i,j):
+        #returns True if somehow we know that the domain from the i-th generator to the j-th generator does contribute. (False signifies no knowledge.)
+        (e,b)=self.domain_type(i,j)
+        (m,D)=self.domains_stored[i][j]
+
+        if (e,b)==(1,1):
+            return True
+        #Add more, if possible.
+
         return False
 
-def domain_type(i,j):
-    #Analyses the domain from i-th generator to j-th generator (only if can_contribute(i,j)). Returns (Euler characteristic, number of boundary components)
-    if not can_contribute(i,j):
-        raise Exception("No positive Maslov index 1 domain")
-    (m,D)=domains_stored[(i,j)]
-    e2=D.dot_product(euler_measures_2)#twice the Euler measure of D
-    iota=m-e2#the intersection number with fat diagonal
 
-    alpha_coefficients=[sum([(D*point_measures_4)[foo] for foo in range(len(all_intersections)) if all_intersections[foo][0]==a]) for a in range(genus)]
-    trivial=alpha_coefficients.count(0)#number of trivial disks
-    euler=genus-trivial-iota#Euler char of Lipshitz surface
-    
-    bdy_comps=genus*[None,]
-    while None in bdy_comps:
-        first_unknown=bdy_comps.index(None)
-        try:
-            bdy_comps[first_unknown]=max(bdy_comps)+1
-        except TypeError:
-            bdy_comps[first_unknown]=0
-            
-        current_circle=first_unknown
-        
-        reached_end_of_loop=False
-        while not reached_end_of_loop:
-            next_circle=next(foo for foo in range(genus) if all_intersections[generators[j][current_circle]][1]==all_intersections[generators[i][foo]][1])
-            bdy_comps[next_circle]=bdy_comps[current_circle]
-            current_circle=next_circle
-            if current_circle==first_unknown:
-                reached_end_of_loop=True
-                
-    return (euler,max(bdy_comps)+1-trivial)
-
-def does_contribute(i,j):
-    #returns True if somehow we know that the domain from the i-th generator to the j-th generator does contribute. (False significies no knowledge.)
-
-    (m,D)=domains_stored[(i,j)]
-    (e,b)=domain_type(i,j)
-
-    if (e,b)==(1,1):
-        return True
-
-    return False
-
-if not abs_gradings_manual:
-    (chosen_generators,their_abs_gradings)=([gS[0] for gS in genSpinC],len(genSpinC)*[0,])
-else:
-    chosen_generators=[generators.index(g) for g in chosen_generators]#convert generators to their indices.
-    if sorted([SpinC[g] for g in chosen_generators])!=range(len(genSpinC)):
-        raise Exception("Chosen generators for absolute gradings do not contain exactly one from each SpinC structure.")
-#Absolute gradings; we arbitrarily set it to 0 on one generator in each SpinC grading. If you know absolute gradings from other sources, add them in the data file.
-abs_gr=len(generators)*[None,]
-for other_ind,other in enumerate(generators):
-    chosen_generator=next(g for g in genSpinC[SpinC[other_ind]] if g in chosen_generators)
-    its_abs_grading=their_abs_gradings[chosen_generators.index(chosen_generator)]
-    abs_gr[other_ind]=domains_stored[(other_ind,chosen_generator)][0]+its_abs_grading
-(gr_min,gr_max)=[min(abs_gr),max(abs_gr)]
-#the min and max gradings
-grading_spread=dict([(gr,[g for g in range(len(generators)) if abs_gr[g]==gr]) for gr in Set(abs_gr)])
-#generators in each grading
-
-if there_is_action:
-    image_of_generators=[tuple(sorted([image_of_intersections[p] for p in g])) for g in generators]
-    image_of_generator_indices=[generators.index(g) for g in image_of_generators]
-else:
-    image_of_generators=None
-
-#######OUTPUT#######
-
-def print_action():
-    if there_is_action:
-        for i in range(len(generators)):
-            print repr(i)+" under the action maps to "+repr(image_of_generator_indices[i])
-    else:
-        print "No action specified."
-    return None
-
-def print_differentials():
-    for ind_S,S in enumerate(genSpinC):
-        print "In SpinC structure "+repr(ind_S)
-        for i in S:
-            print repr(i)+" in grading "+repr(abs_gr[i])+" under the differential (possibly) maps to "+repr([j for j in S if can_contribute(i,j)])+" with domain types (Euler char, num of boundaries): "+repr([domain_type(i,j) for j in S if can_contribute(i,j)])
-    return None
-
-
-def pretty_print(output_file=None,interchanges=[],cancellations=[],SpinC_structures=range(len(genSpinC))):
-    #Tries to print the chain complex in human-readable format. Only prints the complex whose SpinC structure is in the list SpinC_structures (default is all). User tweaking (via interchanges, with a list of tuples of generators to be swapped) recommended; the interchanges will be done in the order provided. Cancellations is a list of tuples of generators where the differential coefficient is known to be 1, and it performs the cancellations in the order provided. Tries to print Z/2-equivariantly if Z/2-action given. So tweak and cancel equivariantly in that case if you want the Z/2 symmetry to remain. If output_file=None, shows the graphics, else stores it.
-
-    replacements=len(generators)*[None,]#the string to be printed instead of generator; empty string kills the generator
-    for g in range(len(generators)):
-        if SpinC[g] in SpinC_structures:
-            replacements[g]=repr(g)
+    def print_action(self):
+        if self.there_is_action:
+            for g in self.generators:
+                print repr(g)+" under the action maps to "+repr(self.image_of_generators[g])
         else:
-            replacements[g]=''
-    arrows=dict()#the differential arrows in the chain complex
-    for g in range(len(generators)):
-        for h in range(len(generators)):
-            if can_contribute(g,h) and SpinC[g] in SpinC_structures and SpinC[h] in SpinC_structures:
-                if does_contribute(g,h):
-                    arrows[(g,h)]='red'#Coefficient 1
-                else:
-                    arrows[(g,h)]='blue'#Coefficient unknown
+            print "No action specified."
+        return None
 
-    #Now the cancellations
-    for (a,b) in cancellations:
-        if abs_gr[a]!=abs_gr[b]+1:
-            raise Exception("Cancelling arrow not in correct grading")
-        if arrows[(a,b)]!='red':
-            raise Exception("Not clear if the cancelling arrow is coefficient 1")
+    def print_differentials(self):
+        if not self.fully_initialized:
+            self.generate_domains()
+        for S in self.SpinC_structures:
+            print "In SpinC structure "+repr(S)
+            for i in self.genSpinC[S]:
+                print repr(i)+" in grading "+repr(self.abs_gr[i])+" under the differential (possibly) maps to "+repr([j for j in self.genSpinC[S] if self.can_contribute(i,j)])+" with domain types (Euler char, num of boundaries): "+repr([self.domain_type(i,j) for j in self.genSpinC[S] if self.can_contribute(i,j)])
+        return None
+
+
+    def pretty_print(self,output_file=None,interchanges=[],cancellations=[],relevant_SpinC='all'):
+        """
+        Tries to print the chain complex in human-readable
+        format. Only prints the complex whose SpinC structure is in
+        the list relevant_SpinC (default is 'all'). User tweaking (via
+        interchanges, with a list of tuples of generators to be
+        swapped) recommended; the interchanges will be done in the
+        order provided. Cancellations is a list of tuples of
+        generators where the differential coefficient is known to be
+        1, and it performs the cancellations in the order
+        provided. 
+
+        Tries to print Z/2-equivariantly if Z/2-action given, and
+        relevant_SpinC is fixed under the Z/2-action. So tweak and
+        cancel equivariantly in that case if you want the Z/2 symmetry
+        to remain. If output_file=None, shows the graphics, else
+        stores it.
+        """
         
-        maps_to_a=[foo for foo in range(len(generators)) if (foo,a) in arrows]
-        maps_to_b=[foo for foo in range(len(generators)) if ((foo,b) in arrows and foo!=a)]
-        maps_from_a=[foo for foo in range(len(generators)) if ((a,foo) in arrows and foo!=b)]
-        maps_from_b=[foo for foo in range(len(generators)) if (b,foo) in arrows]
-
-        for g in maps_to_b:
-            if arrows[(g,b)]=='red':
-                replacements[g]+='+'+replacements[a]
-            else:
-                replacements[g]+='+c('+replacements[a]+')'#c denotes some coefficients. All c's are not equal.
-            for h in maps_from_a:
-                if arrows[(g,b)]=='red' and arrows[(a,h)]=='red':
-                    if (g,h) in arrows:
-                        if arrows[(g,h)]=='red':
-                            del arrows[(g,h)]
-                        else:
-                            arrows[(g,h)]='green'
-                    else:
-                        arrows[(g,h)]='red'
-                else:
-                    arrows[(g,h)]='green'#Coefficient unknown, comes from change of basis.
-
-        for g in maps_to_a:
-            del arrows[(g,a)]
-        for g in maps_to_b:
-            del arrows[(g,b)]
-        for h in maps_from_a:
-            del arrows[(a,h)]
-        for h in maps_from_b:
-            del arrows[(b,h)]
+        print_equivariantly=self.there_is_action
+        
+        if not self.fully_initialized:
+            self.generate_domains()
+        if relevant_SpinC=='all':
+            relevant_SpinC=self.SpinC
             
-        replacements[a]=''
-        replacements[b]=''
-        del arrows[(a,b)]
-    
-    width=max([len(grading_spread[gr]) for gr in grading_spread])+1
+        if self.there_is_action:
+            for S in relevant_SpinC:
+                if self.image_of_SpinC_structures[S] not in relevant_SpinC:
+                    print_equivariantly=False
 
-    x_coordinates=len(generators)*[0,]
-    #Initial assignment
-    for gr in grading_spread:
-        ll=[g for g in grading_spread[gr] if SpinC[g] in SpinC_structures]
-        if there_is_action:
-            fixed=[g for g in ll if image_of_generator_indices[g]==g]
-            non_fixed=[g for g in ll if  image_of_generator_indices[g]!=g]
-            if fixed==[]:
-                distance=width/(len(ll)+1)
+        replacements=len(self.generators)*[None,]#the string to be printed instead of generator; empty string kills the generator
+        for g in self.generators:
+            if self.SpinC[g] in relevant_SpinC:
+                replacements[g]=repr(g)
             else:
+                replacements[g]=''
+        arrows=dict()#the differential arrows in the chain complex
+        for g in self.generators:
+            for h in self.generators:
+                if self.can_contribute(g,h) and self.SpinC[g] in relevant_SpinC and self.SpinC[h] in relevant_SpinC:
+                    if self.does_contribute(g,h):
+                        arrows[(g,h)]='red'#Coefficient 1
+                    else:
+                        arrows[(g,h)]='blue'#Coefficient unknown
+
+        #Now the cancellations
+        for (a,b) in cancellations:
+            if self.abs_gr[a]!=self.abs_gr[b]+1:
+                raise Exception("Cancelling arrow not in correct grading")
+            if arrows[(a,b)]!='red':
+                print "WARNING: Trying to cancel an arrow where the program doesn't know if the coefficient is 1"
+                raise Exception("Not clear if the cancelling arrow is coefficient 1")#Comment or uncomment this line, depending on how we feel.
+
+            maps_to_a=[foo for foo in self.generators if (foo,a) in arrows]
+            maps_to_b=[foo for foo in self.generators if ((foo,b) in arrows and foo!=a)]
+            maps_from_a=[foo for foo in self.generators if ((a,foo) in arrows and foo!=b)]
+            maps_from_b=[foo for foo in self.generators if (b,foo) in arrows]
+
+            for g in maps_to_b:
+                if arrows[(g,b)]=='red':
+                    replacements[g]+='+'+replacements[a]
+                else:
+                    replacements[g]+='+c('+replacements[a]+')'#c denotes some coefficients. All c's are not equal.
+                for h in maps_from_a:
+                    if arrows[(g,b)]=='red' and arrows[(a,h)]=='red':
+                        if (g,h) in arrows:
+                            if arrows[(g,h)]=='red':
+                                del arrows[(g,h)]
+                            else:
+                                arrows[(g,h)]='green'
+                        else:
+                            arrows[(g,h)]='red'
+                    else:
+                        arrows[(g,h)]='green'#Coefficient still unknown, comes from change of basis.
+
+            for g in maps_to_a:
+                del arrows[(g,a)]
+            for g in maps_to_b:
+                del arrows[(g,b)]
+            for h in maps_from_a:
+                del arrows[(a,h)]
+            for h in maps_from_b:
+                del arrows[(b,h)]
+
+            replacements[a]=''
+            replacements[b]=''
+            del arrows[(a,b)]
+
+        width=max([len(self.grading_spread[gr]) for gr in self.grading_spread])+1
+        x_coordinates=len(self.generators)*[None,]
+        #Initial assignment
+        for gr in self.grading_spread:
+            ll=[g for g in self.grading_spread[gr] if self.SpinC[g] in relevant_SpinC]
+            if print_equivariantly:
+                fixed=[g for g in ll if self.image_of_generators[g]==g]
+                non_fixed=[g for g in ll if  self.image_of_generators[g]!=g]
                 distance=width/(len(non_fixed)+2)
 
-            for g in fixed:
-                x_coordinates[g]=0#there could be a collision here.
-            non_fixed_reps=[]
-            for g in non_fixed:
-                if image_of_generator_indices[g] not in non_fixed_reps:
-                    non_fixed_reps.append(g)
-            for ind_g,g in enumerate(non_fixed_reps):
-                x_coordinates[g]=(ind_g+1)*distance
-                x_coordinates[image_of_generator_indices[g]]=-(ind_g+1)*distance
+                for g in fixed:
+                    x_coordinates[g]=0#there could be a collision here.
+                non_fixed_reps=[]
+                for g in non_fixed:
+                    if self.image_of_generators[g] not in non_fixed_reps:
+                        non_fixed_reps.append(g)
+                for ind_g,g in enumerate(non_fixed_reps):
+                    x_coordinates[g]=(ind_g+1)*distance
+                    x_coordinates[self.image_of_generators[g]]=-(ind_g+1)*distance
 
-        else:
-            distance=width/(len(ll)+1)
+            else:
+                distance=width/(len(ll)+1)
 
-            for ind_g,g in enumerate(ll):
-                x_coordinates[g]=N(-width/2+(ind_g+1)*distance)
+                for ind_g,g in enumerate(ll):
+                    x_coordinates[g]=-width/2+(ind_g+1)*distance
 
-    #Now the interchanges
-    for (a,b) in interchanges:
-        if abs_gr[a]!=abs_gr[b]:
-            raise Exception("Trying to interchange stuff in different gradings")
-        temp=x_coordinates[a]
-        x_coordinates[a]=x_coordinates[b]
-        x_coordinates[b]=temp
+        #Now the interchanges
+        for (a,b) in interchanges:
+            if self.abs_gr[a]!=self.abs_gr[b]:
+                raise Exception("Trying to interchange stuff in different gradings")
+            temp=x_coordinates[a]
+            x_coordinates[a]=x_coordinates[b]
+            x_coordinates[b]=temp
 
 
-    G=Graphics()
-    for gr in grading_spread:
-        G+=line([(-width/2,gr),(width/2,gr)],alpha=0.1)
-        if abs_gradings_manual:
-            G+=text(repr(gr),(width/2+1,gr),color="blue")
-        else:
+        G=Graphics()
+        for gr in self.grading_spread:
+            G+=line([(-width/2,gr),(width/2,gr)],alpha=0.1)#alpha is transparency here. nothing to do with us.
             G+=text(repr(gr)+'+C',(width/2+1,gr),color="blue")
-            
 
-    for g in range(len(generators)):
-        if replacements[g]!='':
-            G+=text(replacements[g],(x_coordinates[g],abs_gr[g]),color="black")
-            maps_from_g=[h for h in range(len(generators)) if (g,h) in arrows]
-            for h in maps_from_g:
-                G+=line([(x_coordinates[g],abs_gr[g]),(x_coordinates[h],abs_gr[h])],alpha=0.8,color=arrows[(g,h)])
 
-        
-    G.axes(False)
+        for g in self.generators:
+            if replacements[g]!='':
+                G+=text(replacements[g],(x_coordinates[g],self.abs_gr[g]),color="black")
+                maps_from_g=[h for h in self.generators if (g,h) in arrows]
+                for h in maps_from_g:
+                    G+=line([(x_coordinates[g],self.abs_gr[g]),(x_coordinates[h],self.abs_gr[h])],alpha=0.8,color=arrows[(g,h)])
 
-    if output_file==None:
-        G.show()
-    else:
-        G.save(output_file)
+        G.axes(False)
+
+        if output_file==None:
+            G.show()
+        else:
+            G.save(output_file)
