@@ -512,7 +512,7 @@ class HeegaardDiagram():
 
 
 
-def branched_double(H,num_pointed_regions,old_intersections,old_boundaries):
+def branched_double(H,num_pointed_regions):
     """
     Inputs a HeegaardDiagram H with 2 basepoints (always placed on the
     last two regions). Returns a Heegaard diagram branched along those
@@ -557,10 +557,10 @@ def branched_double(H,num_pointed_regions,old_intersections,old_boundaries):
             if (curr_alpha,first_p) in cut_edge:
                 curr_sheet=1-curr_sheet
 
-            (new_boundaries[-1]).append(new_intersections.index((next_p,curr_sheet)))
+            (new_boundary_intersections[-1]).append(new_intersections.index((next_p,curr_sheet)))
             
         if i==-1:
-            new_boundaries[-1]+=[new_image_of_intersections[p] for p in new_boundaries[-1]]
+            new_boundary_intersections[-1]+=[new_image_of_intersections[p] for p in new_boundary_intersections[-1]]
 
     return HeegaardDiagram(new_boundary_intersections,num_pointed_regions,new_image_of_intersections)
 
