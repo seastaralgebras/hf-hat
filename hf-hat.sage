@@ -505,8 +505,62 @@ class HeegaardDiagram():
                     G+=line([(x_coordinates[g],self.abs_gr[g]),(x_coordinates[h],self.abs_gr[h])],alpha=0.8,color=arrows[(g,h)])
 
         G.axes(False)
-
         if output_file==None:
             G.show()
         else:
             G.save(output_file)
+
+
+
+def branched_double(H,num_pointed_regions,old_intersections,old_boundaries):
+    """
+    Inputs a HeegaardDiagram H with 2 basepoints (always placed on the
+    last two regions). Returns a Heegaard diagram branched along those
+    two points. If num_pointed_regions=1, places a single basepoint on
+    the preimage of the last region; if num_pointed_regions=2, places
+    two basepoints on the preimages of the last two regions. There is
+    a natural Z/2 action on the branched double cover, which is also
+    returned. (If H came with a Z/2 action on its own, that is lost.)
+    """
+
+    if len(H.regions)-len(H.regions_un)!=2:
+        raise Exception("Need two pointed regions")
+    if num_pointed_regions not in [1,2]:
+        raise Exception("Can only return 1 or 2 basepoints")
+
+    #First we find a path from connecting the two basepoints in the complement of beta circles
+    shortest_path=H.region_graph_alpha.shortest_path(H.regions[-2],H.regions[-1])
+    cut_edge=[next(e[2] for e in H.region_graph_alpha.edges(labels=True) if sorted(list(e[:2]))==sorted(shortest_path[steps:steps+2])) for steps in range(len(shortest_path)-1)]#a cut_edge between the two marked regions, passing only through alpha circles. The double branch cover of the complement of the cut_edge is a trivial cover. (The cut_edge is a list of (alpha_circle,arc_on_that_alpha_circle).)
+
+
+    #Now we are ready to construct the new Heegaard diagram. The complement of the cut_edge has 2 lifts: the 0 and the 1 lift. So most objects also have 2 lifts. 
+    new_intersections=[(p,0) for p in H.intersections]+[(p,1) for p in H.intersections]#(p,i) lies in the i lift.
+    new_regions=[(R,0) for R in H.regions_un]+[(R,1) for R in H.regions_un]+[(R,-1) for R in H.regions[-2:]]#(R,i) has the first intersection point in the i lift; when i=-1, it is a lift of a pointed region.
+
+    new_image_of_intersections=[p+len(H.intersections) for p in H.intersections]+[p for p in H.intersections]#The Z-2 action is easy to write down.
+
+    new_boundary_intersections=[]
+    for (R,i) in new_regions:
+        new_boundary_intersections.append([])
+        curr_sheet=abs(i)
+        for ind_p in range(0,len(H.boundary_intersections[R]),2):
+            [curr_p,next_p]=H.boundary_intersections[R][ind_p:ind_p+2]
+            curr_alpha=H.intersection_incidence[curr_p][0]
+            (new_boundary_intersections[-1]).append(new_intersections.index((curr_p,curr_sheet)))
+
+            #Now check if we move sheets as we go from curr_p to next_p along this alpha arc
+            curr_p_ind=(H.intersections_on_alphas[curr_alpha]).index(curr_p)
+            if H.intersections_on_alphas[curr_alpha][curr_p_ind-1]==next_p:
+                first_p=next_p#Accordingly to orientation of the alpha arc, next_p appears before curr_p, so is first_p.
+            else:
+                first_p=curr_p
+            if (curr_alpha,first_p) in cut_edge:
+                curr_sheet=1-curr_sheet
+
+            (new_boundaries[-1]).append(new_intersections.index((next_p,curr_sheet)))
+            
+        if i==-1:
+            new_boundaries[-1]+=[new_image_of_intersections[p] for p in new_boundaries[-1]]
+
+    return HeegaardDiagram(new_boundary_intersections,num_pointed_regions,new_image_of_intersections)
+
