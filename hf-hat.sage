@@ -56,6 +56,7 @@ class HeegaardDiagram():
             self.image_of_intersections=image_of_intersections
         else:
             self.there_is_action=False
+        print "Step 1"
 
         self.regions=range(len(self.boundary_intersections))#the regions
         self.regions_un=range(len(self.boundary_intersections)-num_pointed_regions)#the unpointed regions
@@ -69,6 +70,7 @@ class HeegaardDiagram():
             self.is_nice=True#is a nice diagram
         else:
             self.is_nice=False
+        print "Stage 2"
         #boundary_mat[i][j] is the coefficient of the boundary of (boundary of the i-th region restricted to alpha circles) at the j-th intersection point  (unpointed data stored as a matrix).  
         self.boundary_mat=[[-self.boundary_intersections[R][0::2].count(p)+self.boundary_intersections[R][1::2].count(p) for p in self.intersections] for R in self.regions]
         self.boundary_mat_un=matrix(ZZ,len(self.regions_un),len(self.intersections),self.boundary_mat[:len(self.regions_un)])
