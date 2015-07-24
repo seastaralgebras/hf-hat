@@ -183,7 +183,7 @@ class HeegaardDiagram():
         if self.there_is_action:
             self.image_of_SpinC_structures=[]#if_there_is_action, image of SpinC_structures under the action.
         self.domains_stored=len(self.generators)*[None,]#domains_stored will be a double list, domains_stored[i][j] will store (m,D) or None; where D is some domain from i to j and m is its Maslov index.
-        self.abs_gr=len(self.generators)*[None,]#The absolute gradings of the generators; can be reset manually.
+        self.abs_gr=len(self.generators)*[None,]#The absolute gradings of the generators; can be reset manually by set_abs_gr.
         self.gr_min=None
         self.gr_max=None#the minimum and maximum abs grading
         self.grading_spread=dict()#dict[gr] is a list of generators with abs_gr=gr
@@ -250,14 +250,13 @@ class HeegaardDiagram():
 
         for S in self.SpinC_structures:
             base_gen=self.genSpinC[S][0]
+            self.abs_gr[base_gen]=0
             if self.there_is_action:
                 if self.image_of_SpinC_structures[S]<S:
                     self.abs_gr[base_gen]=self.abs_gr[self.image_of_generators[base_gen]]
                 elif self.image_of_SpinC_structures[S]==S:#Error check.
                     if self.domains_stored[self.image_of_generators[base_gen]][base_gen][0]!=0:
                         raise Exception("The action does not respect gradings.")
-            else:
-                self.abs_gr[base_gen]=0
             for g in self.genSpinC[S]:
                 self.abs_gr[g]=self.abs_gr[base_gen]+self.domains_stored[g][base_gen][0]
         self.gr_min=min(self.abs_gr)
