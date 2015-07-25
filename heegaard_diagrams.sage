@@ -52,12 +52,12 @@ trefoil=HeegaardDiagram([[0,1,2,0,2,1,0,2],[1,0],[1,2]],2)
 L_3_1=branched_double(trefoil,1)
 """
 
-T_3_7_nice=HeegaardDiagram([
-        [[1,2,32,0],[0,1]]+
-        [[a,a+1,15-a,14-a] for a in range(3,7)]+[[7,8],]+
-        [[a,a+1,a-11,a-12] for a in range(13,31)]+
-        [[a,a-1,(54-a)%33,53-a] for a in range(21,27)]+[[27,26],]+
-        [[2,3,12,13,1,0,20,19,31,32],]
-        ], 2)
-#Sigma_2_3_7_again=branched_double(T_3_7_nice)
+T_3_7_nice=HeegaardDiagram(
+    [[1,2,32,0],[0,1]]+
+    [[a,a+1,14-a,15-a] for a in range(3,7)]+[[7,8],]+
+    [[a,a+1,a-11,a-12] for a in range(13,31)]+
+    [[a,a-1,(54-a)%33,53-a] for a in range(21,27)]+[[27,26],]+
+    [[2,3,12,13,1,0,20,19,31,32],]
+    , 2)
+S237=branched_double(T_3_7_nice,1)
 

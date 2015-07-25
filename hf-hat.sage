@@ -56,12 +56,10 @@ class HeegaardDiagram():
             self.image_of_intersections=image_of_intersections
         else:
             self.there_is_action=False
-        print "Step 1"
 
         self.regions=range(len(self.boundary_intersections))#the regions
         self.regions_un=range(len(self.boundary_intersections)-num_pointed_regions)#the unpointed regions
         self.intersections=range(1+max(flatten(self.boundary_intersections)))#the intersection points
-
 
         #Euler measures of the regions, times 2 (unpointed data stored as a matrix).            
         self.euler_measures_2=[2-len(self.boundary_intersections[R])/2 for R in self.regions]
@@ -70,13 +68,13 @@ class HeegaardDiagram():
             self.is_nice=True#is a nice diagram
         else:
             self.is_nice=False
-        print "Stage 2"
         #boundary_mat[i][j] is the coefficient of the boundary of (boundary of the i-th region restricted to alpha circles) at the j-th intersection point  (unpointed data stored as a matrix).  
         self.boundary_mat=[[-self.boundary_intersections[R][0::2].count(p)+self.boundary_intersections[R][1::2].count(p) for p in self.intersections] for R in self.regions]
         self.boundary_mat_un=matrix(ZZ,len(self.regions_un),len(self.intersections),self.boundary_mat[:len(self.regions_un)])
         #point_measures_4[i][j] is the point measure of i-th region at the j-th point, times 4  (unpointed data stored as a matrix).  
         self.point_measures_4=[[self.boundary_intersections[R].count(p) for p in self.intersections] for R in self.regions]
         self.point_measures_4_un=matrix(ZZ,len(self.regions_un),len(self.intersections),self.point_measures_4[:len(self.regions_un)])
+
 
 
         #intersections_on_alphas[i] is the ordered list of intersections on alpha_i (according to the orientation of alpha_i). Similarly, for beta. 
@@ -120,6 +118,7 @@ class HeegaardDiagram():
                 if not found_next_point:#must have completed the cycle
                     curr_p=start_p
             self.intersections_on_betas.append(new_circle)
+            
 
         self.alphas=range(len(self.intersections_on_alphas))#the alpha circles
         self.betas=range(len(self.intersections_on_betas))#the beta circles
@@ -160,6 +159,7 @@ class HeegaardDiagram():
                 image_of_R=image_of_R[smallest_index:]+image_of_R[:smallest_index]
                 if image_of_R not in self.boundary_intersections:
                     raise Exception("The Z/2-action is not a valid action.")
+
 
         #generators is the list of hf-generators, and generator_reps are their representatives. Each generator is represented as a tuple of intersections; the i-th point will be on alpha_i.
         self.generator_reps=[]
@@ -533,6 +533,9 @@ def branched_double(H,num_pointed_regions):
     #First we find a path from connecting the two basepoints in the complement of beta circles
     shortest_path=H.region_graph_alpha.shortest_path(H.regions[-2],H.regions[-1])
     cut_edge=[next(e[2] for e in H.region_graph_alpha.edges(labels=True) if sorted(list(e[:2]))==sorted(shortest_path[steps:steps+2])) for steps in range(len(shortest_path)-1)]#a cut_edge between the two marked regions, passing only through alpha circles. The double branch cover of the complement of the cut_edge is a trivial cover. (The cut_edge is a list of (alpha_circle,arc_on_that_alpha_circle).)
+
+    print "WARNING: The implementation that chose the following cut edge is wrong."
+    print cut_edge    #THE ABOVE IS WRONG; cut_edge needs to be chosen carefully.
 
 
     #Now we are ready to construct the new Heegaard diagram. The complement of the cut_edge has 2 lifts: the 0 and the 1 lift. So most objects also have 2 lifts. 
