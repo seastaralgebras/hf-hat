@@ -122,7 +122,34 @@ class HeegaardDiagram():
 
         self.alphas=range(len(self.intersections_on_alphas))#the alpha circles
         self.betas=range(len(self.intersections_on_betas))#the beta circles
-        self.intersection_incidence=[(next(a for a in self.alphas if p in self.intersections_on_alphas[a]),next(b for b in self.betas if p in self.intersections_on_betas[b])) for p in self.intersections]#the i-th intersection point lies in alpha_a and beta_b where (a,b)=intersection_incidence[i]
+        self.intersection_incidence=[[next(a for a in self.alphas if p in self.intersections_on_alphas[a]),next(b for b in self.betas if p in self.intersections_on_betas[b])] for p in self.intersections]#the i-th intersection point lies in alpha_a and beta_b, and has alpha.beta intersection number n, where [a,b,n]=intersection_incidence[i]
+        for p in self.intersections:
+            try:
+                [a,b]=self.intersection_incidence[p]
+
+                if len(self.intersections_on_alphas[a])>2 and len(self.intersections_on_betas[b])>2:#if any of a or b has 2 or fewer intersections, their orientations are not yet well-defined.
+                    [a_pind,b_pind]=[(self.intersections_on_alphas[a]).index(p),(self.intersections_on_betas[b]).index(p)]
+                    (R,ind_p)=next((R,ind_p) for R in self.regions for ind_p in range(len(self.boundary_intersections[R])/2) if self.boundary_intersections[R][2*ind_p]==p)
+                    prev_b=self.boundary_intersections[R][2*ind_p-1]
+                    next_a=self.boundary_intersections[R][2*ind_p+1]
+                    intersection_number=-1#if a were oriented from p to next_a, and b oriented from prev_b to p, then the intersection.
+                    if self.intersections_on_alphas[a][a_pind-1]==next_a:#a is actually oriented oppositely
+                        intersection_number=-intersection_number
+                    if self.intersections_on_betas[b][b_pind-1]!=prev_b:#b is actually oriented oppositely
+                        intersection_number=-intersection_number
+                    (self.intersection_incidence[p]).append(intersection_number)
+                    
+                elif len(self.intersections_on_alphas[a])==1 or len(self.intersections_on_betas[b])==1:
+                    (self.intersection_incidence[p]).append(1)
+                else:
+                    print "WARNING: The current implementation of intersection numbers doesn't work if some alpha or beta circle has exactly 2 intersections."
+                    raise Exception("Couldn't orient the alpha and beta circles")#Comment out exception depending on how we feel.
+            except ValueError:#intersection number at p already determined
+                pass
+        self.intersection_matrix=matrix(ZZ,len(self.alphas),len(self.betas))#the (a,b) entry is the intersection number between alpha circle a and beta circle b
+        for a in self.alphas:
+            for b in self.betas:
+                self.intersection_matrix[a,b]=sum([n for [i,j,n] in self.intersection_incidence if (a==i and b==j)])
 
         #region_graph_alpha is a graph whose vertices are regions, and edges are alpha arcs separating two regions. Edges labeled by which alpha circle, and the alpha arc (as the index of first (according to the orientation of that alpha circle) intersection point on that alpha arc). Ditto for beta circles
         self.region_graph_alpha=Graph(len(self.regions),multiedges=True,loops=True)
@@ -532,7 +559,7 @@ def branched_double(H,num_pointed_regions):
 
     #First we find a path from connecting the two basepoints in the complement of beta circles
     shortest_path=H.region_graph_alpha.shortest_path(H.regions[-2],H.regions[-1])
-    cut_edge=[next(e[2] for e in H.region_graph_alpha.edges(labels=True) if sorted(list(e[:2]))==sorted(shortest_path[steps:steps+2])) for steps in range(len(shortest_path)-1)]#a cut_edge between the two marked regions, passing only through alpha circles. The double branch cover of the complement of the cut_edge is a trivial cover. (The cut_edge is a list of (alpha_circle,arc_on_that_alpha_circle).)
+    cut_edge=[next(e[2] for e in H.region_graph_alpha.edges(labels=True) if sorted(list(e[:2]))==sorted(shortest_path[steps:steps+2])) for steps in range(len(shortest_path)-1)]#a cut_edge between the two marked regions, passing only through alpha circles. We want the double branch cover of the complement of the cut_edge to be a trivial cover. (The cut_edge is a list of (alpha_circle,arc_on_that_alpha_circle).)
 
     print "WARNING: The implementation that chose the following cut edge is wrong."
     print cut_edge    #THE ABOVE IS WRONG; cut_edge needs to be chosen carefully.
@@ -559,8 +586,9 @@ def branched_double(H,num_pointed_regions):
                 first_p=next_p#Accordingly to orientation of the alpha arc, next_p appears before curr_p, so is first_p.
             else:
                 first_p=curr_p
-            if (curr_alpha,first_p) in cut_edge:
-                curr_sheet=1-curr_sheet
+            for foo in cut_edge:
+                if (curr_alpha,first_p) == foo:
+                    curr_sheet=1-curr_sheet
 
             (new_boundary_intersections[-1]).append(new_intersections.index((next_p,curr_sheet)))
             
