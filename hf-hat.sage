@@ -75,7 +75,7 @@ class HeegaardDiagram():
         self.point_measures_4=[[self.boundary_intersections[R].count(p) for p in self.intersections] for R in self.regions]
         self.point_measures_4_un=matrix(ZZ,len(self.regions_un),len(self.intersections),self.point_measures_4[:len(self.regions_un)])
 
-
+        print "Stage 1"
 
         #intersections_on_alphas[i] is the ordered list of intersections on alpha_i (according to the orientation of alpha_i). Similarly, for beta. 
         self.intersections_on_alphas=[]
@@ -118,11 +118,19 @@ class HeegaardDiagram():
                 if not found_next_point:#must have completed the cycle
                     curr_p=start_p
             self.intersections_on_betas.append(new_circle)
-            
+
+        print "Stage 2"
 
         self.alphas=range(len(self.intersections_on_alphas))#the alpha circles
         self.betas=range(len(self.intersections_on_betas))#the beta circles
+        print (self.intersections_on_alphas, self.intersections_on_betas)
+        if sorted(flatten(self.intersections_on_alphas))!=self.intersections:
+            raise Exception("Alpha circles don't contain all the intersections")
+        if sorted(flatten(self.intersections_on_betas))!=self.intersections:
+            raise Exception("Beta circles don't contain all the intersections")
+
         self.intersection_incidence=[[next(a for a in self.alphas if p in self.intersections_on_alphas[a]),next(b for b in self.betas if p in self.intersections_on_betas[b])] for p in self.intersections]#the i-th intersection point lies in alpha_a and beta_b, and has alpha.beta intersection number n, where [a,b,n]=intersection_incidence[i]
+        print "Stage 2.3"
         for p in self.intersections:
             try:
                 [a,b]=self.intersection_incidence[p]
@@ -146,12 +154,15 @@ class HeegaardDiagram():
                     raise Exception("Couldn't orient the alpha and beta circles")#Comment out exception depending on how we feel.
             except ValueError:#intersection number at p already determined
                 pass
+        print "Stage 2.5"
         self.intersection_matrix=matrix(ZZ,len(self.alphas),len(self.betas))#the (a,b) entry is the intersection number between alpha circle a and beta circle b
         for a in self.alphas:
             for b in self.betas:
                 self.intersection_matrix[a,b]=sum([n for [i,j,n] in self.intersection_incidence if (a==i and b==j)])
 
-        #region_graph_alpha is a graph whose vertices are regions, and edges are alpha arcs separating two regions. Edges labeled by which alpha circle, and the alpha arc (as the index of first (according to the orientation of that alpha circle) intersection point on that alpha arc). Ditto for beta circles
+        print "Stage 3"
+
+        #region_graph_alpha is a graph whose vertices are regions, and edges are alpha arcs separating two regions. Edges labeled by which alpha circle, and the alpha arc (as the first (according to the orientation of that alpha circle) intersection point on that alpha arc). Ditto for beta circles
         self.region_graph_alpha=Graph(len(self.regions),multiedges=True,loops=True)
         for a in self.alphas:
             for ind_p,p in enumerate(self.intersections_on_alphas[a]):
@@ -159,7 +170,8 @@ class HeegaardDiagram():
                 regions_with_pq=[R for R in self.regions for ind_foo,foo in enumerate(self.boundary_intersections[R][0::2]) if sorted([foo,self.boundary_intersections[R][2*ind_foo+1]])==sorted([p,q])]
                 if len(regions_with_pq)!=2:
                     raise Exception("Each alpha arc has two adjacent regions")
-                self.region_graph_alpha.add_edge(regions_with_pq+[(a,ind_p),])
+                print regions_with_pq+[(a,p),]
+                self.region_graph_alpha.add_edge(regions_with_pq+[(a,p),])
         self.region_graph_beta=Graph(len(self.regions),multiedges=True,loops=True)
         for b in self.betas:
             for ind_p,p in enumerate(self.intersections_on_betas[b]):
@@ -167,7 +179,8 @@ class HeegaardDiagram():
                 regions_with_pq=[R for R in self.regions for ind_foo,foo in enumerate(self.boundary_intersections[R][0::2]) if sorted([foo,self.boundary_intersections[R][2*ind_foo-1]])==sorted([p,q])]
                 if len(regions_with_pq)!=2:
                     raise Exception("Each beta arc has two adjacent regions")
-                self.region_graph_beta.add_edge(regions_with_pq+[(b,ind_p),])
+                self.region_graph_beta.add_edge(regions_with_pq+[(b,p),])
+        print self.region_graph_alpha.edges()
 
         #Now some more error checking. (Definitely not a complete collection.) If diagram is wrong, some error could also be raised by other parts of the program.
         if vector(ZZ,len(self.regions),(len(self.regions))*[1,])*matrix(ZZ,len(self.regions),len(self.intersections),self.point_measures_4)!=vector(ZZ,len(self.intersections),(len(self.intersections))*[4,]):
@@ -187,6 +200,7 @@ class HeegaardDiagram():
                 if image_of_R not in self.boundary_intersections:
                     raise Exception("The Z/2-action is not a valid action.")
 
+        print "Stage 4"
 
         #generators is the list of hf-generators, and generator_reps are their representatives. Each generator is represented as a tuple of intersections; the i-th point will be on alpha_i.
         self.generator_reps=[]
@@ -552,6 +566,9 @@ def branched_double(H,num_pointed_regions):
     returned. (If H came with a Z/2 action on its own, that is lost.)
     """
 
+    print "This implementation is currently broken"
+    print H.boundary_intersections
+
     if len(H.regions)-len(H.regions_un)!=2:
         raise Exception("Need two pointed regions")
     if num_pointed_regions not in [1,2]:
@@ -559,11 +576,31 @@ def branched_double(H,num_pointed_regions):
 
     #First we find a path from connecting the two basepoints in the complement of beta circles
     shortest_path=H.region_graph_alpha.shortest_path(H.regions[-2],H.regions[-1])
-    cut_edge=[next(e[2] for e in H.region_graph_alpha.edges(labels=True) if sorted(list(e[:2]))==sorted(shortest_path[steps:steps+2])) for steps in range(len(shortest_path)-1)]#a cut_edge between the two marked regions, passing only through alpha circles. We want the double branch cover of the complement of the cut_edge to be a trivial cover. (The cut_edge is a list of (alpha_circle,arc_on_that_alpha_circle).)
+    print shortest_path
+    cut_edge=[next(e[2] for e in H.region_graph_alpha.edges(labels=True) if sorted(list(e[:2]))==sorted(shortest_path[steps:steps+2])) for steps in range(len(shortest_path)-1)]#a cut_edge between the two marked regions, passing only through alpha circles. (The cut_edge is a list of (alpha_circle,arc_on_that_alpha_circle).)  We want the double branch cover of the complement of the cut_edge to be a trivial cover. So we need to ensure that the cut edge intersects each alpha circle an even number of times.
 
-    print "WARNING: The implementation that chose the following cut edge is wrong."
-    print cut_edge    #THE ABOVE IS WRONG; cut_edge needs to be chosen carefully.
+    print cut_edge
+    cut_edge_vector=vector(GF(2),len(H.alphas),[len([e for e in cut_edge if e[0]==a]) for a in H.alphas])
+    incidence_matrix=matrix(GF(2),len(H.alphas),len(H.betas),H.intersection_matrix)
+    try:
+        extra_betas=incidence_matrix.solve_right(cut_edge_vector)#Need to add these beta circles to cut edge.
+    except ValueError:
+        raise Exception("Need the knot to be null-homologous mod 2, for the program to compute double branched cover.")
 
+    print cut_edge_vector
+    print incidence_matrix
+
+    for b in H.betas:
+        if (extra_betas[b])%2==1:#We need to add a parallel copy of this beta circle to cut edge
+            for p in H.intersections_on_betas[b]:
+                [a,n]=H.intersection_incidence[p][0::2]
+                if n==1:
+                    cut_edge.append((a,p))
+                else:
+                    ind_p=(H.intersections_on_alphas[a]).index(p)
+                    cut_edge.append((a,H.intersections_on_alphas[a][ind_p-1]))
+
+    print cut_edge
 
     #Now we are ready to construct the new Heegaard diagram. The complement of the cut_edge has 2 lifts: the 0 and the 1 lift. So most objects also have 2 lifts. 
     new_intersections=[(p,0) for p in H.intersections]+[(p,1) for p in H.intersections]#(p,i) lies in the i lift.
@@ -595,5 +632,6 @@ def branched_double(H,num_pointed_regions):
         if i==-1:
             new_boundary_intersections[-1]+=[new_image_of_intersections[p] for p in new_boundary_intersections[-1]]
 
+    print new_boundary_intersections
     return HeegaardDiagram(new_boundary_intersections,num_pointed_regions,new_image_of_intersections)
 

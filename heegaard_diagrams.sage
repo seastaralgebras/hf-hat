@@ -1,6 +1,6 @@
 load hf-hat.sage
 
-
+"""
 Sigma_2_3_4=HeegaardDiagram([
         [0,1,10,9],
         [9,8,6,7,4,0],
@@ -48,7 +48,8 @@ Sigma_2_3_7_m=HeegaardDiagram([
         ], 1, [0,9,8,7,6,5,4,3,2,1,18,17,16,15,14,13,12,11,10])
 
 trefoil=HeegaardDiagram([[0,1,2,0,2,1,0,2],[1,0],[1,2]],2)
-#L_3_1=branched_double(trefoil,1)
+L_3_1=branched_double(trefoil,1)
+"""
 
 T_3_7_nice=HeegaardDiagram(
     [[1,2,32,0],[0,1]]+
@@ -57,5 +58,5 @@ T_3_7_nice=HeegaardDiagram(
     [[a,a-1,(54-a)%33,53-a] for a in range(21,27)]+[[27,26],]+
     [[2,3,12,13,1,0,20,19,31,32],]
     , 2)
-#S237=branched_double(T_3_7_nice,1)
+S237=branched_double(T_3_7_nice,1)
 
