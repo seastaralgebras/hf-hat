@@ -313,8 +313,10 @@ class HeegaardDiagram():
 
         change=gr-self.abs_gr[base_gen]
         S=self.SpinC[base_gen]
-        if self.there_is_action and self.image_of_SpinC_structures[S]!=S:
-            generators_to_change=self.genSpinC[S]+self.genSpinC[self.image_of_SpinC_structures[S]]
+        if self.there_is_action:
+            T=self.image_of_SpinC_structures[S]
+        if self.there_is_action and T!=S:
+            generators_to_change=self.genSpinC[S]+self.genSpinC[T]
         else:
             generators_to_change=self.genSpinC[S]
         for g in generators_to_change:
@@ -328,7 +330,14 @@ class HeegaardDiagram():
         
 
         if self.chain_complexes_initialized:
-            print "We have to do something here"
+            self.chain_complex[S]=dict([(gr+change,self.chain_complex[S][gr]) for gr in self.chain_complex[S]])
+            if self.there_is_action:
+                if T!=S:
+                    self.chain_complex[T]=dict([(gr+change,self.chain_complex[T][gr]) for gr in self.chain_complex[T]])
+                else:
+                    self.mapping_cone_complex[S]=dict([(gr+change,self.mapping_cone_complex[S][gr]) for gr in self.mapping_cone_complex[S]])
+                    
+
 
     def can_contribute(self,i,j):
         #checks if the domain from i-th generator to j-th generator has Maslov index 1 and is positive.
