@@ -219,9 +219,16 @@ class HeegaardDiagram():
         self.grading_spread=dict()#dict[gr] is a list of generators with abs_gr=gr
         self.fully_initialized=False#will be set to true once the above variables are computed.
 
+        #The chain complexes will also not be initialized initially.
+        self.chain_complex=[]#This is the HF-hat chain complex. It will be a list whose i-th element is the complex in the i-th SpinC structure.
+        if self.there_is_action:
+            self.mapping_cone_complex=[]#This is the mapping cone complex of the map Id plus the action. The i-th element is the complex in the i-th SpinC structure if that SpinC structure is Z/2 equivariant, else None.
+        self.chain_complexes_initialized=False#will be set to true once the above two variables are initialized.
+        
+
     def __repr__(self):
         
-        return "Heegaard diagram with "+repr(len(self.alphas))+" alpha and beta circles intersecting each other in "+repr(len(self.intersections))+" intersection points. The intersection points on the alpha circles are "+repr(self.intersections_on_alphas)+" and the intersection points on the beta circles are "+repr(self.intersections_on_betas)+". There are "+repr(len(self.regions_un))+" unpointed regions, and the intersection points appearing on their boundaries are "+repr(self.boundary_intersections)+"."
+        return "Heegaard diagram with "+repr(len(self.alphas))+" alpha and beta circles intersecting each other in "+repr(len(self.intersections))+" intersection points. The intersection points on the alpha circles are "+repr(self.intersections_on_alphas)+" and the intersection points on the beta circles are "+repr(self.intersections_on_betas)+". There are "+repr(len(self.regions_un))+" unpointed regions, and the intersection points appearing on their boundaries are "+repr(self.boundary_intersections[:len(self.regions_un)])+"."
 
     def find_domain(self,initial,final):
         #finds a domain D from the initial generator to the final generator; returns (Maslov_index(D),D). Called by generate_domain.
@@ -242,6 +249,9 @@ class HeegaardDiagram():
 
     def generate_domains(self):
         #Fills up domains_stored, and consequently, all the SpinC information.
+
+        if self.fully_initialized:
+            return True
 
         for initial in self.generators:
             self.domains_stored[initial]=[]
@@ -301,16 +311,14 @@ class HeegaardDiagram():
         if not self.fully_initialized:
             self.generate_domains()
 
+        change=gr-self.abs_gr[base_gen]
         S=self.SpinC[base_gen]
-        self.abs_gr[base_gen]=gr
-        for g in self.genSpinC[S]:
-            self.abs_gr[g]=self.abs_gr[base_gen]+self.domains_stored[g][base_gen][0]
         if self.there_is_action and self.image_of_SpinC_structures[S]!=S:
-            base_gen=self.image_of_generators[base_gen]
-            S=self.SpinC[base_gen]
-            self.abs_gr[base_gen]=gr
-            for g in self.genSpinC[S]:
-                self.abs_gr[g]=self.abs_gr[base_gen]+self.domains_stored[g][base_gen][0]
+            generators_to_change=self.genSpinC[S]+self.genSpinC[self.image_of_SpinC_structures[S]]
+        else:
+            generators_to_change=self.genSpinC[S]
+        for g in generators_to_change:
+            self.abs_gr[g]+=change
 
         self.gr_min=min(self.abs_gr)
         self.gr_max=max(self.abs_gr)
@@ -318,6 +326,9 @@ class HeegaardDiagram():
         for gr in Set(self.abs_gr):
             self.grading_spread[gr]=[g for g in self.generators if self.abs_gr[g]==gr]
         
+
+        if self.chain_complexes_initialized:
+            print "We have to do something here"
 
     def can_contribute(self,i,j):
         #checks if the domain from i-th generator to j-th generator has Maslov index 1 and is positive.
@@ -378,6 +389,111 @@ class HeegaardDiagram():
 
         return False
 
+
+    def generate_complexes(self):
+        if self.chain_complexes_initialized:
+            return True
+
+        if not self.fully_initialized:
+            self.generate_domains()
+
+        for g in self.generators:
+            for h in self.generators:
+                if self.can_contribute(g,h) and (not self.does_contribute(g,h)):
+                    raise Exception("Not enough data to generate complexes")
+
+        for S in self.SpinC_structures:
+            chain_complex=dict()#This will be chain complex in SpinC structure S. chain_complex[gr] will be the matrix from grading gr to gr-1.
+            gradings_in_S=sorted(list(Set([self.abs_gr[g] for g in self.genSpinC[S]])))#the gradings that can appear in this SpinC structure.
+            for gr in gradings_in_S:
+                if (gr-1) in gradings_in_S:
+                    generators_higher=[g for g in self.genSpinC[S] if self.abs_gr[g]==gr]
+                    generators_lower=[g for g in self.genSpinC[S] if self.abs_gr[g]==gr-1]
+
+                    boundary_matrix=matrix(GF(2),len(generators_higher),len(generators_lower))
+                    for ind_g,g in enumerate(generators_higher):
+                        for ind_h,h in enumerate(generators_lower):
+                            if self.can_contribute(g,h):
+                                boundary_matrix[ind_g,ind_h]=1
+                    chain_complex[gr]=boundary_matrix
+            (self.chain_complex).append(chain_complex)
+
+        if self.there_is_action:
+            for S in self.SpinC_structures:
+                if self.image_of_SpinC_structures[S]!=S:#Not a fixed SpinC structure. Won't generate the mapping cone complex.
+                    (self.mapping_cone_complex).append(None)
+                else:#Will add the mapping cone complex of Id + the action.
+                    mapping_cone_complex=dict()
+                    gradings_in_S=sorted(list(Set([self.abs_gr[g] for g in self.genSpinC[S]]+[self.abs_gr[g]+1 for g in self.genSpinC[S]])))#the gradings that can appear in this SpinC structure.
+                    for gr in gradings_in_S:
+                        if (gr-1) in gradings_in_S:
+                            generators_higher=[g for g in self.genSpinC[S] if self.abs_gr[g]==gr]+[g for g in self.genSpinC[S] if self.abs_gr[g]==gr-1]
+                            generators_lower=[g for g in self.genSpinC[S] if self.abs_gr[g]==gr-1]+[g for g in self.genSpinC[S] if self.abs_gr[g]==gr-2]
+
+                            mc_boundary_matrix=matrix(GF(2),len(generators_higher),len(generators_lower))
+                            for ind_g,g in enumerate(generators_higher):
+                                for ind_h,h in enumerate(generators_lower):
+                                    if self.can_contribute(g,h):
+                                        mc_boundary_matrix[ind_g,ind_h]=1
+                                    if self.image_of_generators[g]!=g and (g==h or self.image_of_generators[g]==h):
+                                        mc_boundary_matrix[ind_g,ind_h]=1
+                            mapping_cone_complex[gr]=mc_boundary_matrix
+                    (self.mapping_cone_complex).append(mapping_cone_complex)
+
+        self.chain_complexes_initialized=True
+
+
+    def compute_homology(self):
+        #Computes homology of the chain complex
+        if not self.chain_complexes_initialized:
+            self.generate_complexes()
+
+        homology=[]
+
+        for S in self.SpinC_structures:
+            homology_in_S=dict()
+            ranks_in_S=dict()
+            gradings_in_S=sorted(list(Set([self.abs_gr[g] for g in self.genSpinC[S]])))
+            for gr in self.chain_complex[S]:
+                ranks_in_S[gr]=(self.chain_complex[S][gr]).rank()
+            for gr in gradings_in_S:
+                homology_in_S[gr]=len([g for g in self.genSpinC[S] if self.abs_gr[g]==gr])
+                if (gr-1) in gradings_in_S:
+                    homology_in_S[gr]-=ranks_in_S[gr]
+                if (gr+1) in gradings_in_S:
+                    homology_in_S[gr]-=ranks_in_S[gr+1]
+            homology.append(homology_in_S)
+
+        return homology
+
+    def compute_mc_homology(self):
+        #Computes homology of the mapping cone complex of Id + the action
+        if not self.there_is_action:
+            raise Exception("No map to have a mapping cone complex")
+
+        if not self.chain_complexes_initialized:
+            self.generate_complexes()
+
+        mc_homology=[]
+
+        for S in self.SpinC_structures:
+            if self.mapping_cone_complex[S]==None:
+                mc_homology.append(None)
+            else:
+                mc_homology_in_S=dict()
+                ranks_in_S=dict()
+                gradings_in_S=sorted(list(Set([self.abs_gr[g] for g in self.genSpinC[S]]+[self.abs_gr[g]+1 for g in self.genSpinC[S]])))
+                for gr in self.mapping_cone_complex[S]:
+                    ranks_in_S[gr]=(self.mapping_cone_complex[S][gr]).rank()
+                for gr in gradings_in_S:
+                    mc_homology_in_S[gr]=len([g for g in self.genSpinC[S] if self.abs_gr[g]==gr]+[g for g in self.genSpinC[S] if self.abs_gr[g]==gr-1])
+                    if (gr-1) in gradings_in_S:
+                        mc_homology_in_S[gr]-=ranks_in_S[gr]
+                    if (gr+1) in gradings_in_S:
+                        mc_homology_in_S[gr]-=ranks_in_S[gr+1]
+                mc_homology.append(mc_homology_in_S)
+
+        return mc_homology
 
     def print_action(self):
         if self.there_is_action:
