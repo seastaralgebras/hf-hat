@@ -206,23 +206,23 @@ class HeegaardDiagram():
 
 
         #Some more variables that will not be initialized initially, since we need to solve matrix equations.
-        self.SpinC=[0,]+(len(self.generators)-1)*[None,]#SpinC[i] will be the SpinC structure of the i-th generator (numbered arbitrarily starting at 0).
-        self.SpinC_structures=[]#the SpinC structures
-        self.genSpinC=[]#genSpinC[i] is a list of generators indices living in the i-th SpinC structure.
+        self.SpinC="Not yet initialized"#SpinC[i] will be the SpinC structure of the i-th generator (numbered arbitrarily starting at 0).
+        self.SpinC_structures="Not yet initialized"#the SpinC structures
+        self.genSpinC="Not yet initialized"#genSpinC[i] is a list of generators indices living in the i-th SpinC structure.
         #domains_stored[i][j] stores (m,D) where D is a domain (as a vector over the unpointed regions) from the i-th generator to the j-th generator, and m is its Maslov index. If there are multiple domains (happens when H^1 not 0), will store only one (the program isn't really fit for that case). If there are none (happens when H_1 not 0, i.e., have multiple SpinC structures), stores None.
         if self.there_is_action:
-            self.image_of_SpinC_structures=[]#if_there_is_action, image of SpinC_structures under the action.
-        self.domains_stored=len(self.generators)*[None,]#domains_stored will be a double list, domains_stored[i][j] will store (m,D) or None; where D is some domain from i to j and m is its Maslov index.
-        self.abs_gr=len(self.generators)*[None,]#The absolute gradings of the generators; can be reset manually by set_abs_gr.
-        self.gr_min=None
-        self.gr_max=None#the minimum and maximum abs grading
-        self.grading_spread=dict()#dict[gr] is a list of generators with abs_gr=gr
+            self.image_of_SpinC_structures="Not yet initialized"#if_there_is_action, image of SpinC_structures under the action.
+        self.domains_stored="Not yet initialized"#domains_stored will be a double list, domains_stored[i][j] will store (m,D) or None; where D is some domain from i to j and m is its Maslov index.
+        self.abs_gr="Not yet initialized"#The absolute gradings of the generators; can be reset manually by set_abs_gr.
+        self.gr_min="Not yet initialized"
+        self.gr_max="Not yet initialized"#the minimum and maximum abs grading
+        self.grading_spread="Not yet initialized"#grading_spread[gr] is a list of generators with abs_gr=gr
         self.fully_initialized=False#will be set to true once the above variables are computed.
 
         #The chain complexes will also not be initialized initially.
-        self.chain_complex=[]#This is the HF-hat chain complex. It will be a list whose i-th element is the complex in the i-th SpinC structure.
+        self.chain_complex="Not yet initialized"#This is the HF-hat chain complex. It will be a list whose i-th element is the complex in the i-th SpinC structure.
         if self.there_is_action:
-            self.mapping_cone_complex=[]#This is the mapping cone complex of the map Id plus the action. The i-th element is the complex in the i-th SpinC structure if that SpinC structure is Z/2 equivariant, else None.
+            self.mapping_cone_complex="Not yet initialized"#This is the mapping cone complex of the map Id plus the action. The i-th element is the complex in the i-th SpinC structure if that SpinC structure is Z/2 equivariant, else None.
         self.chain_complexes_initialized=False#will be set to true once the above two variables are initialized.
         
 
@@ -253,8 +253,13 @@ class HeegaardDiagram():
         if self.fully_initialized:
             return True
 
+        self.domains_stored=[]
+        self.SpinC=[0,]+(len(self.generators)-1)*[None,]
+        self.abs_gr=(len(self.generators))*[None,]
+        self.grading_spread=dict()
+
         for initial in self.generators:
-            self.domains_stored[initial]=[]
+            self.domains_stored.append([])
             for final in self.generators:
                 S=self.SpinC[final]
                 if final<initial:
@@ -410,6 +415,10 @@ class HeegaardDiagram():
             for h in self.generators:
                 if self.can_contribute(g,h) and (not self.does_contribute(g,h)):
                     raise Exception("Not enough data to generate complexes")
+
+        self.chain_complex=[]
+        if self.there_is_action:
+            self.mapping_cone_complex=[]
 
         for S in self.SpinC_structures:
             chain_complex=dict()#This will be chain complex in SpinC structure S. chain_complex[gr] will be the matrix from grading gr to gr-1.
