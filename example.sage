@@ -67,16 +67,19 @@ S234.grading_spread#Dictionary with grading_spread[gr] being a list of generator
 S234.chain_complex#This is the CF-hat chain complex. It is a list whose i-th element is the complex in the i-th SpinC structure. (Currently, only works if every positive index 1 domain contributes.)
 
 #The following is a list of functions in the HeegaardDiagram class file.
-#We are running the following functions with i=0,j=1,gr=0.
-[i,j,gr]=[0,1,0]
+#We are running the following functions with i=10,j=0,gr=0.
+[i,j,gr]=[10,0,0]
 ##############
 S234.generate_domains()#Initializes a bunch of variables such as domains_stored and the SpinC information.
 S234.can_contribute(i,j)#Returns True if the domain from i-th generator to j-th generator has Maslov index 1 and is positive; False otherwise.
 S234.does_contribute(i,j)#Returns True if the domain from i-th generator to j-th generator does contribute to the CF-hat differential; False signifies no knowledge.
 S234.domain_type(i,j)#Analyses the domain from i-th generator to j-th generator (only if can_contribute(i,j)). Returns (Euler characteristic, number of boundary components).
 S234.set_abs_gr(i,gr)#Sets abs_gr of the i-th generator to value gr.
-S234.generate_complexes()#Initializes the variable chain_complex.
-S234.compute_homology()#Computes HF-hat. Returns a list, whose i-th element is the homology in the i-th SpinC structure, which is a dictionary whose value at gr is the dim of HF-hat in grading gr.
+try:
+    S234.generate_complexes()#Initializes the variable chain_complex.
+    S234.compute_homology()#Computes HF-hat. Returns a list, whose i-th element is the homology in the i-th SpinC structure, which is a dictionary whose value at gr is the dim of HF-hat in grading gr.
+except:
+    pass
 ##############
 S234#Prints details about the Heegaard diagram.
 S234.print_differentials()#Prints what the program knows about the differentials in CF-hat.
@@ -100,20 +103,19 @@ S237=HeegaardDiagram([
         [15,16,6,7,4,0,13,16,10,9,4,3]
         ], 1, [3,2,1,0,4,11,10,9,12,7,6,5,8,15,14,13,16])#Heegaard diagram for Sigma(2,3,7) with a Z/2-action.
 
-#The following is a list of extra variables for the Z/2-action.
+#The following is a list of extra variables and functions for the Z/2-action.
 ##############
 S237.there_is_action#True if there is a Z/2-action; False otherwise.
 S237.image_of_intersections#List whose i-th element is the Z/2-action image of the i-th intersection point.
 S237.image_of_generators#List whose i-th element is the Z/2-action images of the i-th generator.
 S237.image_of_SpinC_structures#List whose i-th element is the Z/2-action image of the i-th SpinC_structure.
-#The following variables will also not be initialized initially. Some functions will initialize them, such as generate_complexes().
+#The following variables and functions will not be initialized initially. Some functions will initialize them, such as generate_complexes().
 ##############
-S237.mapping_cone_complex#This is a list whose i-th element is the mapping cone complex of Id plus the Z/2-action in the i-th SpinC structure if that SpinC structure is Z/2 equivariant; otherwise the i-th element is None.
-
-#The following is a list of extra functions for the Z/2-action.
-##############
-S237.compute_mc_homology()#Computes homology of the mapping cone complex of Id plus the action. Returns a list whose i-th element is the homology of the mapping cone complex in SpinC structure i, as a dictionary. (Returns None is the i-th SpinC structure is not Z/2-equivariant.)
-
+try:
+    S237.mapping_cone_complex#This is a list whose i-th element is the mapping cone complex of Id plus the Z/2-action in the i-th SpinC structure if that SpinC structure is Z/2 equivariant; otherwise the i-th element is None.
+    S237.compute_mc_homology()#Computes homology of the mapping cone complex of Id plus the action. Returns a list whose i-th element is the homology of the mapping cone complex in SpinC structure i, as a dictionary. (Returns None is the i-th SpinC structure is not Z/2-equivariant.)
+except:
+    pass
 
 #The program can also compute double branched covers along knots.
 #(Currently the program requires the knot to be Z/2-nullhomologous.)
