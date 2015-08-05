@@ -12,8 +12,8 @@ notice and this notice are preserved.
 First of all, you need to install Sage. (Visit http://www.sagemath.org/)
 
 The main program is hf-hat.sage. Some Heegaard diagrams are stored in
-the file heegaard_diagrams.sage.  See the files for instructions on
-how to input a Heegaard diagram.
+the file heegaard_diagrams.sage.  Some detailed examples are worked
+out in example. See the files for further instructions.
 
 Add your Heegaard diagram to file heegaard_diagrams.sage. (Feel free
 to comment out the older Heegaard diagrams.)

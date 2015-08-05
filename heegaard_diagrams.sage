@@ -1,5 +1,6 @@
 load hf-hat.sage
 
+#Some stored Heegaard diagrams.
 Sigma_2_3_4=HeegaardDiagram([
         [0,1,10,9],
         [9,8,6,7,4,0],
@@ -57,4 +58,4 @@ T_3_7_nice=HeegaardDiagram(
     [[2,3,12,13,1,0,20,19,31,32],]
     , 2)
 S237=branched_double(T_3_7_nice,1)
-
+#Feel free to comment out the above stored Heegaard diagrams.
