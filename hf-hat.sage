@@ -480,7 +480,7 @@ class HeegaardDiagram():
                     homology_in_S[gr]-=ranks_in_S[gr]
                 if (gr+1) in gradings_in_S:
                     homology_in_S[gr]-=ranks_in_S[gr+1]
-            homology.append(homology_in_S)
+            homology.append(dict([(gr,homology_in_S[gr]) for gr in homology_in_S if homology_in_S[gr]!=0]))
 
         return homology
 
@@ -509,7 +509,7 @@ class HeegaardDiagram():
                         mc_homology_in_S[gr]-=ranks_in_S[gr]
                     if (gr+1) in gradings_in_S:
                         mc_homology_in_S[gr]-=ranks_in_S[gr+1]
-                mc_homology.append(mc_homology_in_S)
+                mc_homology.append(dict([(gr,mc_homology_in_S[gr]) for gr in mc_homology_in_S if mc_homology_in_S[gr]!=0]))
 
         return mc_homology
 
