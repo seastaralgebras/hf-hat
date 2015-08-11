@@ -11,13 +11,15 @@ notice and this notice are preserved.
 **********************************
 First of all, you need to install Sage. (Visit http://www.sagemath.org/)
 
-The main program is hf-hat.sage. Some Heegaard diagrams are stored in
-the file heegaard_diagrams.sage.  Some detailed examples are worked
-out in example.sage. See the files for further instructions.
+The main program is hf-hat.sage. Some detailed examples are worked out
+in example.sage. See the files, particularly the file example.sage,
+for further instructions.
 
-Add your Heegaard diagram to file heegaard_diagrams.sage. (Feel free
-to comment out the older Heegaard diagrams.)
+Copy the example.sage file to some file foo.sage. Add your Heegaard
+diagram to the file foo.sage. (Feel free to delete the older Heegaard
+diagrams.)
 
 Start sage. (On the Bash terminal on my GNU+Linux system, typing sage
-works.) Then load heegaard_diagrams.sage.
+works.) Then load foo.sage. (If you load example.sage, the program
+will regenerate the three pdf files.)
 

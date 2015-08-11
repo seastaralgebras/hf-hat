@@ -15,7 +15,7 @@ load hf-hat.sage
 #Declare a Heegaard diagram as HeegaardDiagram(boundary_intersections,num_pointed_regions)
 #num_pointed_regions is the number of pointed regions in the Heegaard diagram (through which domains won't pass).
 #Then number the regions (both pointed and unpointed) starting at 0, so that all the pointed regions are numbered last. Also number the intersections between alpha and beta circles starting at 0 in some arbitrary order.
-#boundary_intersections is a list whose i-th element is a list of intersection points that lie on the boundary of the i-th region (in the same order as per the boundary orientation of that region).
+#boundary_intersections is a list whose i-th element is a list of intersection points that lie on the boundary of the i-th region (in the same order as per the boundary orientation of that region), so that the first two points are on some alpha circle.
 #(Currently, only works if none of the alpha or beta circles have exactly two intersection points.)
 S234=HeegaardDiagram([
         [0,1,10,9],
@@ -31,7 +31,7 @@ S234=HeegaardDiagram([
 
 #The following is a list of variables in the HeegaardDiagram class file.
 ##############
-S234.boundary_intersections#List whose i-th element is a list of intersection points that lie on the boundary of the i-th region (in the same order as per the boundary orientation of that region).
+S234.boundary_intersections#List whose i-th element is a list of intersection points that lie on the boundary of the i-th region (in the same order as per the boundary orientation of that region), so that the first two points are on some alpha circle.
 S234.regions#The regions.
 S234.regions_un#The unpointed regions.
 S234.intersections#The intersection points between alpha and beta circles.
@@ -40,7 +40,7 @@ S234.euler_measures_2#List whose i-th element is twice the Euler measures of the
 S234.euler_measures_2_un#Vector whose i-th coordinate is the twice the Euler measure of the i-th unpointed region.
 S234.boundary_mat#Double list so that boundary_mat[i][j] is the coefficient of the boundary of (boundary of the i-th region restricted to alpha circles) at the j-th intersection point.
 S234.boundary_mat_un#matrix with boundary_mat_un[i][j] the coefficient of the boundary of (boundary of the i-th unpointed region restricted to alpha circles) at the j-th intersection point.
-S234.point_measures_4#Double list so that 
+S234.point_measures_4#Double list so that point_measures_4[i][j] is 4 times the point measure of the i-th region at the j-th point.
 S234.point_measures_4_un#matrix with point_measures_4_un[i][j] being 4 times the point measure of i-th unpointed region at the j-th point.
 S234.alphas#The alpha circles.
 S234.betas#The beta circles.
@@ -83,7 +83,7 @@ except:
 ##############
 S234#Prints details about the Heegaard diagram.
 S234.print_differentials()#Prints what the program knows about the differentials in CF-hat.
-S234.pretty_print()#Prints the same in a pretty format. Returns a graphics.
+S234.pretty_print()#Prints the same in a pretty format. Returns a graphics. See below for further documentation.
 
 
 #Sometimes there is a Z/2-action on the Heegaard diagram. The program can work with a single such action.
@@ -107,17 +107,17 @@ S237=HeegaardDiagram([
 ##############
 S237.there_is_action#True if there is a Z/2-action; False otherwise.
 S237.image_of_intersections#List whose i-th element is the Z/2-action image of the i-th intersection point.
-S237.image_of_generators#List whose i-th element is the Z/2-action images of the i-th generator.
+S237.image_of_generators#List whose i-th element is the Z/2-action image of the i-th generator.
 S237.image_of_SpinC_structures#List whose i-th element is the Z/2-action image of the i-th SpinC_structure.
 #The following variables and functions will not be initialized initially. Some functions will initialize them, such as generate_complexes().
 ##############
+S237.mapping_cone_complex#This is a list whose i-th element is the mapping cone complex of Id plus the Z/2-action in the i-th SpinC structure if that SpinC structure is Z/2 equivariant; otherwise the i-th element is None.
 try:
-    S237.mapping_cone_complex#This is a list whose i-th element is the mapping cone complex of Id plus the Z/2-action in the i-th SpinC structure if that SpinC structure is Z/2 equivariant; otherwise the i-th element is None.
     S237.compute_mc_homology()#Computes homology of the mapping cone complex of Id plus the action. Returns a list whose i-th element is the homology of the mapping cone complex in SpinC structure i, as a dictionary. (Returns None is the i-th SpinC structure is not Z/2-equivariant.)
 except:
     pass
 
-#The program can also compute double branched covers along knots.
+#The program can also compute double branched covers along knots, returning a Heegaard diagram of the double branched cover along with the Z/2-action.
 #(Currently the program requires the knot to be Z/2-nullhomologous.)
 #Run the function as branched_double(H,num_pointed_regions)
 #H is the starting Heegaard diagram with exactly two pointed regions.
@@ -126,3 +126,29 @@ trefoil=HeegaardDiagram([[0,1,2,0,2,1,0,2],[1,0],[1,2]],2)
 L31=branched_double(trefoil,1)
 
 
+##############
+#The pretty_print function tries to display the CF-hat chain complex
+#in human-readable format. The red arrows indicate that the program
+#knows that the differential contributes; blue signifies no knowledge.
+#Accepts optional parameters output_file, interchanges, cancellations,
+#relevant_SpinC. If output_file specified, the program stores the
+#graphics in that output file (default is None, when the program
+#displays it). The program only shows the complex in SpinC structure
+#which are in the list relevant_SpinC (default is show all SpinC
+#structures).
+S237.pretty_print(output_file="S237_0.pdf")
+#You may make the diagram prettier via interchanges, which is a list
+#of tuples of generators to be swapped (the interchanges will be done
+#in the order provided).
+S237.pretty_print(output_file="S237_1.pdf",interchanges=[(12,9),(13,1),(16,5),(14,0),(17,4),(15,6),(6,18),(6,0),(15,3),(15,14)])
+#You may also simplify the complex by cancellations, which is a list
+#of tuples of generators where the differential coefficient is known
+#to be 1, and it performs the cancellations in the order
+#provided. (Cancellations can produce new zig-zag arrows, which are
+#shown in green.) 
+S237.pretty_print(output_file="S237_2.pdf",interchanges=[(12,9),(13,1),(16,5),(14,0),(17,4),(15,6),(6,18),(6,0),(15,3),(15,14)],cancellations=[(6,4),(18,23),(0,11),(15,17),(3,21),(14,10),(5,1),(16,13)])
+#The program tries to print Z/2-equivariantly if
+#Z/2-action given, and relevant_SpinC is fixed under the
+#Z/2-action. So tweak and cancel equivariantly in that case if you
+#want the Z/2 symmetry to remain.
+        
