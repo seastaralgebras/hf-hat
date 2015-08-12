@@ -158,18 +158,20 @@ class HeegaardDiagram():
         for a in self.alphas:
             for ind_p,p in enumerate(self.intersections_on_alphas[a]):
                 q=self.intersections_on_alphas[a][ind_p+1-len(self.intersections_on_alphas[a])]
-                regions_with_pq=[R for R in self.regions for ind_foo,foo in enumerate(self.boundary_intersections[R][0::2]) if sorted([foo,self.boundary_intersections[R][2*ind_foo+1]])==sorted([p,q])]
-                if len(regions_with_pq)!=2:
-                    raise Exception("Each alpha arc has two adjacent regions")
-                self.region_graph_alpha.add_edge(regions_with_pq+[(a,p),])
+                regions_with_pq_1=[R for R in self.regions for ind_foo,foo in enumerate(self.boundary_intersections[R][0::2]) if [foo,self.boundary_intersections[R][2*ind_foo+1]]==[p,q]]
+                regions_with_pq_2=[R for R in self.regions for ind_foo,foo in enumerate(self.boundary_intersections[R][0::2]) if [foo,self.boundary_intersections[R][2*ind_foo+1]]==[q,p]]
+                if len(regions_with_pq_1)!=1 or len(regions_with_pq_2)!=1:
+                    raise Exception("Each alpha arc has two adjacent regions on two sides.")
+                self.region_graph_alpha.add_edge(regions_with_pq_1+regions_with_pq_2+[(a,p),])
         self.region_graph_beta=Graph(len(self.regions),multiedges=True,loops=True)
         for b in self.betas:
             for ind_p,p in enumerate(self.intersections_on_betas[b]):
                 q=self.intersections_on_betas[b][ind_p+1-len(self.intersections_on_betas[b])]
-                regions_with_pq=[R for R in self.regions for ind_foo,foo in enumerate(self.boundary_intersections[R][0::2]) if sorted([foo,self.boundary_intersections[R][2*ind_foo-1]])==sorted([p,q])]
-                if len(regions_with_pq)!=2:
-                    raise Exception("Each beta arc has two adjacent regions")
-                self.region_graph_beta.add_edge(regions_with_pq+[(b,p),])
+                regions_with_pq_1=[R for R in self.regions for ind_foo,foo in enumerate(self.boundary_intersections[R][0::2]) if [foo,self.boundary_intersections[R][2*ind_foo-1]]==[p,q]]
+                regions_with_pq_2=[R for R in self.regions for ind_foo,foo in enumerate(self.boundary_intersections[R][0::2]) if [foo,self.boundary_intersections[R][2*ind_foo-1]]==[q,p]]
+                if len(regions_with_pq_1)!=1 or len(regions_with_pq_2)!=1:
+                    raise Exception("Each beta arc has two adjacent regions on two sides.")
+                self.region_graph_beta.add_edge(regions_with_pq_1+regions_with_pq_2+[(b,p),])
 
         #Now some more error checking. (Definitely not a complete collection.) If diagram is wrong, some error could also be raised by other parts of the program.
         if vector(ZZ,len(self.regions),(len(self.regions))*[1,])*matrix(ZZ,len(self.regions),len(self.intersections),self.point_measures_4)!=vector(ZZ,len(self.intersections),(len(self.intersections))*[4,]):
