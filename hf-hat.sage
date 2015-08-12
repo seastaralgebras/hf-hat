@@ -150,7 +150,7 @@ class HeegaardDiagram():
                     elif len(self.intersections_on_betas[b])==2:#need to orient b.
                         (first_R,first_ind)=next((foo,ind_bar) for foo in self.regions for ind_bar,bar in enumerate(self.boundary_intersections[R]) if (bar in [p,prev_b] and ind_bar%2==0))#Again, we will orient b as the portion of the boundary of region first_R between indices [first_ind-1,first_ind] (Now, first_ind is forced to be even.)
                         if self.boundary_intersections[first_R][first_ind]==prev_b:#so first_ind-1 is p, i.e., b was actually oriented oppositely.
-                            intersection_number=-intersection_number
+                            intersection_number=-intersection_number#WARNING: THIS CASE NEEDS FURTHER ATTENTION.
 
                     (self.intersection_incidence[p]).append(intersection_number)
                     
