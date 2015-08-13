@@ -129,7 +129,9 @@ class HeegaardDiagram():
             try:
                 [a,b]=self.intersection_incidence[p]
 
-                if len(self.intersections_on_alphas[a])>1 and len(self.intersections_on_betas[b])>1:#Note, if any of a or b has 2 or fewer intersections, their orientations are not yet well-defined.
+                if len(self.intersections_on_alphas[a])==2 or len(self.intersections_on_betas[b])==2:#We haven't yet fixed this case
+                    raise Exception("Failed to orient alpha or beta circle")
+                elif len(self.intersections_on_alphas[a])>1 and len(self.intersections_on_betas[b])>1:#Note, if any of a or b has 2 or fewer intersections, their orientations are not yet well-defined.
                     [a_pind,b_pind]=[(self.intersections_on_alphas[a]).index(p),(self.intersections_on_betas[b]).index(p)]
                     (R,ind_p)=next((R,ind_p) for R in self.regions for ind_p in range(len(self.boundary_intersections[R])/2) if self.boundary_intersections[R][2*ind_p]==p)
                     prev_b=self.boundary_intersections[R][2*ind_p-1]
