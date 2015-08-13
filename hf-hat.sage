@@ -209,12 +209,14 @@ class HeegaardDiagram():
             self.generator_reps+=list(cartesian_product_iterator(possibilities))
         self.generators=range(len(self.generator_reps))#the generator names
 
+        self.generators_dict=dict([(tuple(self.generator_reps[g]),g) for g in self.generators])
+
         if self.there_is_action:
             self.image_of_generators=[]#images of the generators under the Z/2-action
             for g in self.generators:
                 image=[self.image_of_intersections[self.generator_reps[g][a]] for a in self.alphas]
                 image=tuple([next(p for p in image if self.intersection_incidence[p][0]==a) for a in self.alphas])
-                self.image_of_generators.append(self.generator_reps.index(image))
+                self.image_of_generators.append(self.generators_dict[image])
 
 
         #Some more variables that will not be initialized initially, since we need to solve matrix equations.
@@ -423,10 +425,11 @@ class HeegaardDiagram():
         if not self.fully_initialized:
             self.generate_domains()
 
-        for g in self.generators:
-            for h in self.generators:
-                if self.can_contribute(g,h) and (not self.does_contribute(g,h)):
-                    raise Exception("Not enough data to generate complexes")
+        if not self.is_nice:
+            for g in self.generators:
+                for h in self.generators:#Very inefficient
+                    if self.can_contribute(g,h) and (not self.does_contribute(g,h)):
+                        raise Exception("Not enough data to generate complexes")
 
         self.chain_complex=[]
         if self.there_is_action:
