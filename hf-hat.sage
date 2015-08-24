@@ -129,35 +129,21 @@ class HeegaardDiagram():
             try:
                 [a,b]=self.intersection_incidence[p]
 
-                if len(self.intersections_on_alphas[a])==2 or len(self.intersections_on_betas[b])==2:#We haven't yet fixed this case
+                if len(self.intersections_on_alphas[a])<=2 or len(self.intersections_on_betas[b])<=2:#We haven't yet fixed this case
                     raise Exception("Failed to orient alpha or beta circle")
-                elif len(self.intersections_on_alphas[a])>1 and len(self.intersections_on_betas[b])>1:#Note, if any of a or b has 2 or fewer intersections, their orientations are not yet well-defined.
+                elif len(self.intersections_on_alphas[a])>2 and len(self.intersections_on_betas[b])>2:#Note, if any of a or b has 2 or fewer intersections, their orientations are not yet well-defined.
                     [a_pind,b_pind]=[(self.intersections_on_alphas[a]).index(p),(self.intersections_on_betas[b]).index(p)]
-                    (R,ind_p)=next((R,ind_p) for R in self.regions for ind_p in range(len(self.boundary_intersections[R])/2) if self.boundary_intersections[R][2*ind_p]==p)
-                    prev_b=self.boundary_intersections[R][2*ind_p-1]
-                    next_a=self.boundary_intersections[R][2*ind_p+1]
+                    (R,ind_p)=next((R,2*ind_p) for R in self.regions for ind_p in range(len(self.boundary_intersections[R])/2) if self.boundary_intersections[R][2*ind_p]==p)
+                    prev_b=self.boundary_intersections[R][ind_p-1]
+                    next_a=self.boundary_intersections[R][ind_p+1]
                     intersection_number=-1#if a were oriented from p to next_a, and b oriented from prev_b to p, then the intersection a.b.
 
-                    if len(self.intersections_on_alphas[a])>2:
-                        if self.intersections_on_alphas[a][a_pind-1]==next_a:#a is actually oriented oppositely
-                            intersection_number=-intersection_number
-                    elif len(self.intersections_on_alphas[a])==2:#with exactly 2 intersections, need to orient a.
-                        (first_R,first_ind)=next((foo,ind_bar) for foo in self.regions for ind_bar,bar in enumerate(self.boundary_intersections[R]) if bar in [p,next_a])#we will orient a as the portion of the boundary of region first_R between indices [first_ind,first_ind+1] (Note, first_ind is automatically even).
-                        if self.boundary_intersections[first_R][first_ind]==next_a:#so first_ind+1 is p, i.e., a was actually oriented oppositely.
-                            intersection_number=-intersection_number
-                        
-                    if len(self.intersections_on_betas[b])>2:
-                        if self.intersections_on_betas[b][b_pind-1]!=prev_b:#b is actually oriented oppositely
-                            intersection_number=-intersection_number
-                    elif len(self.intersections_on_betas[b])==2:#need to orient b.
-                        (first_R,first_ind)=next((foo,ind_bar) for foo in self.regions for ind_bar,bar in enumerate(self.boundary_intersections[R]) if (bar in [p,prev_b] and ind_bar%2==0))#Again, we will orient b as the portion of the boundary of region first_R between indices [first_ind-1,first_ind] (Now, first_ind is forced to be even.)
-                        if self.boundary_intersections[first_R][first_ind]==prev_b:#so first_ind-1 is p, i.e., b was actually oriented oppositely.
-                            intersection_number=-intersection_number#WARNING: THIS CASE NEEDS FURTHER ATTENTION.
+                    if self.intersections_on_alphas[a][a_pind-1]==next_a:#a is actually oriented oppositely
+                        intersection_number=-intersection_number
+                    if self.intersections_on_betas[b][b_pind-1]!=prev_b:#b is actually oriented oppositely
+                        intersection_number=-intersection_number
 
                     (self.intersection_incidence[p]).append(intersection_number)
-                    
-                elif len(self.intersections_on_alphas[a])==1 or len(self.intersections_on_betas[b])==1:
-                    (self.intersection_incidence[p]).append(1)#without loss of generality
             except ValueError:#intersection number at p already determined
                 pass
         self.intersection_matrix=matrix(ZZ,len(self.alphas),len(self.betas))#the (a,b) entry is the intersection number between alpha circle a and beta circle b
@@ -165,7 +151,7 @@ class HeegaardDiagram():
             for b in self.betas:
                 self.intersection_matrix[a,b]=sum([n for [i,j,n] in self.intersection_incidence if (a==i and b==j)])
 
-        #region_graph_alpha is a graph whose vertices are regions, and edges are alpha arcs separating two regions. Edges labeled by which alpha circle, and the alpha arc (as the first (according to the orientation of that alpha circle) intersection point on that alpha arc). Ditto for beta circles
+        #region_graph_alpha is a graph whose vertices are regions, and edges are alpha arcs separating two regions. Edges labeled by which alpha circle, and the alpha arc (as the first (according to the orientation of that alpha circle) intersection point on that alpha arc). Ditto for beta circles. (We assume each alpha circle and each beta circle has at least 3 intersection points.)
         self.region_graph_alpha=Graph(len(self.regions),multiedges=True,loops=True)
         for a in self.alphas:
             for ind_p,p in enumerate(self.intersections_on_alphas[a]):
