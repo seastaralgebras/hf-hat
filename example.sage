@@ -16,7 +16,10 @@ load hf-hat.sage
 #num_pointed_regions is the number of pointed regions in the Heegaard diagram (through which domains won't pass).
 #Then number the regions (both pointed and unpointed) starting at 0, so that all the pointed regions are numbered last. Also number the intersections between alpha and beta circles starting at 0 in some arbitrary order.
 #boundary_intersections is a list whose i-th element is a list of intersection points that lie on the boundary of the i-th region (in the same order as per the boundary orientation of that region), so that the first two points are on some alpha circle.
-#(The current implementation requires that each alpha circle contains at least 3 intersections, and each beta circle contains at least 3 intersections.)
+#(Currently, only works if none of the alpha or beta circles have exactly two intersection points and if there are no unpointed periodic domains, as in the case of rational homology spheres with same number of alpha curves as the Heegaard surface genus.)
+
+print "Present restrictions:\n 1. None of the alpha or beta circles may have exactly two intersection points.\n 2. There are no unpointed periodic domains (example: rational homology spheres with same number of alpha curves as the Heegaard surface genus)."
+
 S234=HeegaardDiagram([
         [0,1,10,9],
         [9,8,6,7,4,0],
