@@ -45,22 +45,22 @@ class HeegaardDiagram():
         self.intersections=range(1+max(flatten(self.boundary_intersections))) #intersection points
 
         # Euler measures of the regions, times 2
-        self.euler_measures_2=[2-len(self.boundary_intersections[R])/2 for R in self.regions]
-        try:
-            self.euler_measures_2_un=vector(ZZ,len(self.regions_un),self.euler_measures_2[:len(self.regions_un)])
-        except:
-            pdb.set_trace()
+        self.euler_measures_2_lst=[2-len(self.boundary_intersections[R])/2 for R in self.regions]
+        self.euler_measures_2=vector(ZZ,len(self.regions),self.euler_measures_2_lst)
+        self.euler_measures_2_un=vector(ZZ,len(self.regions_un),self.euler_measures_2_lst[:len(self.regions_un)])
         if min(self.euler_measures_2_un)>-1:
             self.is_nice=True # the diagram is nice
         else:
             self.is_nice=False
 
         # boundary_mat[i][j] is the coefficient of the boundary of (boundary of the i-th region restricted to alpha circles) at the j-th intersection point (unpointed data stored as a matrix).
-        self.boundary_mat=[[-self.boundary_intersections[R][0::2].count(p)+self.boundary_intersections[R][1::2].count(p) for p in self.intersections] for R in self.regions]
-        self.boundary_mat_un=matrix(ZZ,len(self.regions_un),len(self.intersections),self.boundary_mat[:len(self.regions_un)])
+        self.boundary_mat_lst=[[-self.boundary_intersections[R][0::2].count(p)+self.boundary_intersections[R][1::2].count(p) for p in self.intersections] for R in self.regions]
+        self.boundary_mat=matrix(ZZ,len(self.regions),len(self.intersections),self.boundary_mat_lst)
+        self.boundary_mat_un=matrix(ZZ,len(self.regions_un),len(self.intersections),self.boundary_mat_lst[:len(self.regions_un)])
         #point_measures_4[i][j] is the point measures of the i-th region at the j-th point, times 4 (unpointed data stored as a matrix)
-        self.point_measures_4=[[self.boundary_intersections[R].count(p) for p in self.intersections] for R in self.regions]
-        self.point_measures_4_un=matrix(ZZ,len(self.regions_un),len(self.intersections),self.point_measures_4[:len(self.regions_un)])
+        self.point_measures_4_lst=[[self.boundary_intersections[R].count(p) for p in self.intersections] for R in self.regions]
+        self.point_measures_4=matrix(ZZ,len(self.regions),len(self.intersections),self.point_measures_4_lst[:len(self.regions)])
+        self.point_measures_4_un=matrix(ZZ,len(self.regions_un),len(self.intersections),self.point_measures_4_lst[:len(self.regions_un)])
 
         # intersections_on_alphas[i] is the ordered list of intersections on alpha_i (according to orientation of alpha_i). Similarly for beta.
         self.intersections_on_alphas=[]
@@ -260,7 +260,7 @@ class HeegaardDiagram():
         return f"Heegaard diagram with {len(self.alphas)} alpha and beta circles intersection each other in {len(self.intersections)} intersection points. The intersection points on the alpha circles are {self.intersections_on_alphas} and the intersection points on the beta circles are {self.intersections_on_betas}. There are {len(self.regions_un)} unpointed regions, and the intersection points appearing on their boundaries are {self.boundary_intersections[:len(self.regions_un)]}."
 
     def find_domain(self,initial,final):
-        # finds a domain D from the initial generator to the final generator; returns (Maslov_index(D),D). Called by generate_domain.
+        # finds a domain D from the initial generator to the final generator not containing pointed regions; returns (Maslov_index(D),D). Called by generate_domain.
         target_vect=vector(ZZ,len(self.intersections))
         target_vect_abs=vector(ZZ,len(self.intersections))
         for p in self.intersections:
@@ -275,6 +275,25 @@ class HeegaardDiagram():
         maslov=maslov/4
 
         return (maslov,answer)
+    
+    
+    def find_domain_pointed(self,initial,final):
+        # Finds a domain D from the initial generator to the final generator counting basepoint regions; returns (Maslov_index(D),D). Called by generate_domain.
+        # needed for the sake of computing spin C structures
+        target_vect=vector(ZZ,len(self.intersections))
+        target_vect_abs=vector(ZZ,len(self.intersections))
+        for p in self.intersections:
+            target_vect[p]=(self.generator_reps[final]).count(p)-(self.generator_reps[initial]).count(p)
+            target_vect_abs[p]=(self.generator_reps[final]).count(p)+(self.generator_reps[initial]).count(p)
+
+        answer=self.boundary_mat.solve_left(target_vect) # returns ValueError on failure
+        answer=vector(ZZ,len(self.regions),answer) # forcing answer to be over integers, returns TypeError on failure
+        maslov=2*answer.dot_product(self.euler_measures_2)+answer*self.point_measures_4*target_vect_abs
+        if maslov%4!=0:
+            raise Exception("Maslov index not an integer")
+        maslov=maslov/4
+
+        return (maslov,answer)
 
     def generate_domains(self):
         # Fills up domains_stored, and consequently, all the SpinC information.
@@ -283,6 +302,7 @@ class HeegaardDiagram():
             return True
 
         self.domains_stored=[]
+        self.domains_pointed=[]
         self.SpinC=[0]+(len(self.generators)-1)*[None]
         # print(self.SpinC)
         self.abs_gr=(len(self.generators))*[None]
@@ -290,37 +310,58 @@ class HeegaardDiagram():
 
         for initial in self.generators:
             self.domains_stored.append([])
+            self.domains_pointed.append([])
             for final in self.generators:
                 S=self.SpinC[final]
                 if final<initial:
                     if self.domains_stored[final][initial]!=None:
                         (m,D)=self.domains_stored[final][initial]
+                        (m_0, D_0)=self.domains_pointed[final][initial]
                         (self.domains_stored[initial]).append((-m,-D))
+                        (self.domains_pointed[initial]).append((-m_0,-D_0))
                     else:
                         (self.domains_stored[initial]).append(None)
+                        (self.domains_pointed[initial]).append(None)
                 elif final==initial:
                     (self.domains_stored[initial]).append((0,vector(ZZ,len(self.regions_un))))
+                    (self.domains_pointed[initial]).append((0,vector(ZZ,len(self.regions))))
                 else:
                     if S==None:
+                        unpointed_domain_error=False
+                        pointed_domain_error=False
                         try:
                             (m,D)=self.find_domain(initial,final)
                             (self.domains_stored[initial]).append((m,D))
+                        except (ValueError, TypeError): # Will return an error if cannot find a domain
+                            unpointed_domain_error=True
+                        try:
+                            (m_0,D_0)=self.find_domain_pointed(initial,final)
+                            (self.domains_pointed[initial]).append((m_0,D_0))
                             self.SpinC[final]=self.SpinC[initial]
                             if self.SpinC[final]!=0:
                                 print(self.SpinC)
                         except (ValueError, TypeError): # Will return an error if cannot find a domain
+                            pointed_domain_error=True
+                        if pointed_domain_error:
                             if final==initial+1:
                                 self.SpinC[final]=max(self.SpinC)+1
                                 if self.SpinC[final]!=0:
                                     print(self.SpinC)
                             (self.domains_stored[initial]).append(None)
+                        
+                        
                     elif S==self.SpinC[initial]:
                         first=next(g for g in self.generators if self.SpinC[g]==S)
                         (m1,D1)=self.domains_stored[first][initial]
                         (m2,D2)=self.domains_stored[first][final]
                         (self.domains_stored[initial]).append((m2-m1,D2-D1))
+                        
+                        (mm1,DD1)=self.domains_pointed[first][initial]
+                        (mm2,DD2)=self.domains_pointed[first][final]
+                        (self.domains_pointed[initial]).append((mm2-mm1,DD2-DD1))
                     else:
                         (self.domains_stored[initial]).append(None)
+                        (self.domains_pointed[initial]).append(None)
         self.SpinC_structures=range(max(self.SpinC)+1)
         self.genSpinC=[[g for g in self.generators if self.SpinC[g]==S] for S in self.SpinC_structures]
         if self.there_is_action:
@@ -836,7 +877,7 @@ HFK_trefoil = HeegaardDiagram(trefoil_nice,2)
 # upstairs=HFK_t37_dc.compute_homology()
 trefoil_hfk = HFK_trefoil.compute_homology()
 print(trefoil_hfk)
-prettyprint=HFK_trefoil.pretty_print()
-prettyprint.show()
+#prettyprint=HFK_trefoil.pretty_print()
+#prettyprint.show()
 
-pdb.set_trace()
+#pdb.set_trace()
