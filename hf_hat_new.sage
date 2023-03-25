@@ -128,7 +128,6 @@ class HeegaardDiagram():
             raise Exception("Alpha circles don't contain all the intersections")
         if sorted(flatten(self.intersections_on_betas))!=list(self.intersections):
             print(sorted(flatten(self.intersections_on_betas)))
-            pdb.set_trace()
             raise Exception("Beta circles don't contain all the intersections")
 
         self.intersection_incidence=[[next(a for a in self.alphas if p in self.intersections_on_alphas[a]),next(b for b in self.betas if p in self.intersections_on_betas[b])] for p in self.intersections] # the i-th intersection point lies in alpha_a and beta_b
@@ -316,12 +315,16 @@ class HeegaardDiagram():
                 if final<initial:
                     if self.domains_stored[final][initial]!=None:
                         (m,D)=self.domains_stored[final][initial]
-                        (m_0, D_0)=self.domains_pointed[final][initial]
                         (self.domains_stored[initial]).append((-m,-D))
-                        (self.domains_pointed[initial]).append((-m_0,-D_0))
                     else:
                         (self.domains_stored[initial]).append(None)
+                    
+                    if self.domains_pointed[final][initial]!=None:
+                        (m_0, D_0)=self.domains_pointed[final][initial]
+                        (self.domains_pointed[initial]).append((-m_0,-D_0))
+                    else:
                         (self.domains_pointed[initial]).append(None)
+                    
                 elif final==initial:
                     (self.domains_stored[initial]).append((0,vector(ZZ,len(self.regions_un))))
                     (self.domains_pointed[initial]).append((0,vector(ZZ,len(self.regions))))
@@ -334,6 +337,10 @@ class HeegaardDiagram():
                             (self.domains_stored[initial]).append((m,D))
                         except (ValueError, TypeError): # Will return an error if cannot find a domain
                             unpointed_domain_error=True
+                            print("initial: " + str(initial))
+                            print("final: " + str(final))
+                            print("ERROR")
+                        
                         try:
                             (m_0,D_0)=self.find_domain_pointed(initial,final)
                             (self.domains_pointed[initial]).append((m_0,D_0))
@@ -342,20 +349,29 @@ class HeegaardDiagram():
                                 print(self.SpinC)
                         except (ValueError, TypeError): # Will return an error if cannot find a domain
                             pointed_domain_error=True
+                        
+                        if unpointed_domain_error:
+                            (self.domains_stored[initial]).append(None)
                         if pointed_domain_error:
                             if final==initial+1:
                                 self.SpinC[final]=max(self.SpinC)+1
                                 if self.SpinC[final]!=0:
                                     print(self.SpinC)
-                            (self.domains_stored[initial]).append(None)
+                            (self.domains_pointed[initial]).append(None)
                         
                         
                     elif S==self.SpinC[initial]:
-                        first=next(g for g in self.generators if self.SpinC[g]==S)
-                        (m1,D1)=self.domains_stored[first][initial]
-                        (m2,D2)=self.domains_stored[first][final]
-                        (self.domains_stored[initial]).append((m2-m1,D2-D1))
                         
+                        first=next(g for g in self.generators if self.SpinC[g]==S)
+                        if (self.domains_stored[first][initial]!=None) and (self.domains_stored[first][final]!=None):
+                            try:
+                                (m1,D1)=self.domains_stored[first][initial]
+                                (m2,D2)=self.domains_stored[first][final]
+                                (self.domains_stored[initial]).append((m2-m1,D2-D1))
+                            except:
+                                print("Exception")
+                        else:
+                            (self.domains_stored[initial]).append(None)
                         (mm1,DD1)=self.domains_pointed[first][initial]
                         (mm2,DD2)=self.domains_pointed[first][final]
                         (self.domains_pointed[initial]).append((mm2-mm1,DD2-DD1))
@@ -377,7 +393,14 @@ class HeegaardDiagram():
                     if self.domains_stored[self.image_of_generators[base_gen]][base_gen][0]!=0:
                         raise Exception("The action does not respect gradings.")
             for g in self.genSpinC[S]:
-                self.abs_gr[g]=self.abs_gr[base_gen]+self.domains_stored[g][base_gen][0]
+                # self.abs_gr[g]=self.abs_gr[base_gen]+self.domains_stored[g][base_gen][0]
+                try:
+                    self.abs_gr[g]=self.abs_gr[base_gen]+self.domains_pointed[g][base_gen][0]
+                except:
+                    print(g)
+                    print(self.abs_gr[g])
+                    print(self.abs_gr)
+                    pdb.set_trace()
         self.gr_min=min(self.abs_gr)
         self.gr_max=max(self.abs_gr)
         self.grading_spread=dict()
@@ -859,7 +882,7 @@ def branched_double(H,num_pointed_regions):
 trefoil_nice = [[1,2],[6,5],[3,4,3,2],[4,5,4,3],[6,0,1,0],[0,1,2,3,2,1],[0,6,5,4,5,6]]
 torus_3_7 = [[k,k+1,12-k,13-k] for k in range(6)]+[[14+k,15+k,3+k,2+k] for k in range(18)]+[[30-k,29-k,22+k,21+k] for k in range(4)]+[[26,25],[0,32],[1,0,32,31]]+[[6,7],[13,14,2,1,31,30,21,20,32,0]]
 
-# HF_trefoil = HeegaardDiagram(trefoil_nice,1)
+HF_trefoil = HeegaardDiagram(trefoil_nice,1)
 HFK_trefoil = HeegaardDiagram(trefoil_nice,2)
 # HFK_figure8 = HeegaardDiagram(figure8,2)
 # HFK_ten161 = HeegaardDiagram(ten161,2)
@@ -875,9 +898,12 @@ HFK_trefoil = HeegaardDiagram(trefoil_nice,2)
 
 # downstairs=HFK_t37.compute_homology()
 # upstairs=HFK_t37_dc.compute_homology()
+trefoil_hf = HF_trefoil.compute_homology()
+print(trefoil_hf)
 trefoil_hfk = HFK_trefoil.compute_homology()
 print(trefoil_hfk)
-#prettyprint=HFK_trefoil.pretty_print()
-#prettyprint.show()
+pdb.set_trace()
+# prettyprint=HFK_trefoil.pretty_print()
+# prettyprint.show()
 
 #pdb.set_trace()
